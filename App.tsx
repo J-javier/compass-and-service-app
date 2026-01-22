@@ -1,5 +1,4 @@
 import './global.css';
-import { Text, View } from 'react-native';
 import ScreenLogin from './components/ScreenLogin';
 
 

@@ -12,7 +12,8 @@ type ScreenContentProps = {
 export const ScreenContent = ({ title, path, children }: ScreenContentProps) => {
   return (
     <View className={styles.container}>
-      <Text className={styles.title}>{title}</Text>
+      <Text className={styles.title}>{title} but i want something else</Text>
+      <Text className='text-red-600'>This is a new option</Text>
       <View className={styles.separator} />
       <EditScreenInfo path={path} />
       {children}

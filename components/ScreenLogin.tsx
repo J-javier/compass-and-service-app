@@ -16,7 +16,7 @@ export default function ScreenLogin() {
     const [password, setPassword] = useState('');
 
     const handleLogin = () =>{
-        if (user === 'admin' && password === '123') {
+        if (user === 'Admin' && password === '123') {
             router.replace('/(tabs)/home'); 
         } else {
             Alert.alert('Error', 'Usuario o contraseña incorrectos');

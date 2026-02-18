@@ -7,7 +7,7 @@ export default function TabsLayout() {
             headerShown: true, // Esto pondrá el título arriba en el home
             tabBarActiveTintColor: '#0ea5e9', // Color sky-500
         }}>
-            <Tabs.Screen name="home" options={{ title: 'Inicio', tabBarIcon: ({ color }) => <Home color={color} size={24} />,}} />
+            <Tabs.Screen name="home" options={{ headerShown: false, tabBarIcon: ({ color }) => <Home color={color} size={24} />,}} />
 
             <Tabs.Screen name="alerts" options={{ title: 'Alertas', tabBarIcon: ({ color }) => <Bell color={color} size={24} />,}} />
             

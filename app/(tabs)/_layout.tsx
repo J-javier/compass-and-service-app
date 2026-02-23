@@ -4,10 +4,10 @@ import { Home, Bell, User } from 'lucide-react-native'; // O los iconos que pref
 export default function TabsLayout() {
     return (
         <Tabs screenOptions={{
-            headerShown: true, // Esto pondrá el título arriba en el home
+            headerShown: false, // Esto pondrá el título arriba en el home
             tabBarActiveTintColor: '#0ea5e9', // Color sky-500
         }}>
-            <Tabs.Screen name="home" options={{ headerShown: false, tabBarIcon: ({ color }) => <Home color={color} size={24} />,}} />
+            <Tabs.Screen name="home" options={{ tabBarIcon: ({ color }) => <Home color={color} size={24} />,}} />
 
             <Tabs.Screen name="alerts" options={{ title: 'Alertas', tabBarIcon: ({ color }) => <Bell color={color} size={24} />,}} />
             

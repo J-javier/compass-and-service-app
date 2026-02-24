@@ -7,7 +7,7 @@ interface FrameAreaProps {
 
 export default function FrameArea({ children }: FrameAreaProps) {
     return (
-        <SafeAreaView className="flex-1 bg-white p-4">
+        <SafeAreaView className="flex-1 bg-gray-100 p-7">
             {children}
         </SafeAreaView>
     );

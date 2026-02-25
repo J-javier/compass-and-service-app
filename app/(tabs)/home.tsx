@@ -41,12 +41,12 @@ export default function Home() {
             </View>
             <Image 
                 className="w-full h-32 object-cover"
-                source={require("../../assets/Blanco_logo.jpg")}
+                source={require("../../assets/Sinfondo.png")}
                 alt="Compass Home"
             />
             <Text className="text-lg mt-8 text-gray-500 mb-8">Selecciona una opción</Text>
 
-            <View className="gap-6">
+            <View className="gap-6 mb-8">
                 {options.map((option) => (
                     <CardOption
                         key={option.id}
@@ -58,8 +58,8 @@ export default function Home() {
                 ))}
             </View>
 
-            <Pressable className="bg-red-500 p-5 rounded-lg mt-4 flex-row items-center justify-center m-5 gap-1 active:bg-red-300 transition-colors duration-200 absolute bottom-0 left-0 right-0">
-                <LogOut color="#fff" size={20} className="mb-1" />
+            <Pressable className="bg-red-500 p-5 rounded-lg flex-row items-center justify-center gap-1 active:bg-red-300 transition-colors duration-200 absolute bottom-7 left-4 right-4">
+                <LogOut color="#fff" size={20}/>
                 <Text className="text-white text-center">Cerrar Sesión</Text>
             </Pressable>
         </FrameArea>

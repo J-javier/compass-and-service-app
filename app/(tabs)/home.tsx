@@ -2,7 +2,7 @@ import { Image, Text, Pressable , View } from "react-native";
 import Avatar from "../../components/Avatar";
 import FrameArea  from "../../components/FrameArea";
 import { LogOut , Clock, Compass } from "lucide-react-native";
-import CardOption from "components/CardOption";
+import CardOption from "@/components/CardOption";
 
 
 export default function Home() {

@@ -1,4 +1,5 @@
-import { SafeAreaView } from "react-native-safe-area-context";  
+import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ReactNode } from "react";
 
 interface FrameAreaProps {
@@ -6,9 +7,20 @@ interface FrameAreaProps {
 }
 
 export default function FrameArea({ children }: FrameAreaProps) {
+    const insets = useSafeAreaInsets();
+    const basePadding = 28;
+
     return (
-        <SafeAreaView className="flex-1 bg-gray-100 p-7">
+        <View
+            className="flex-1 bg-gray-100"
+            style={{
+                paddingTop: insets.top + basePadding,
+                paddingBottom: insets.bottom + basePadding,
+                paddingLeft: insets.left + basePadding,
+                paddingRight: insets.right + basePadding,
+            }}
+        >
             {children}
-        </SafeAreaView>
+        </View>
     );
 }

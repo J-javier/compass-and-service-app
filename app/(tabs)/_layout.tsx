@@ -1,17 +1,44 @@
 import { Tabs } from 'expo-router';
-import { Home, Bell, User } from 'lucide-react-native'; // O los iconos que prefieras
+import { Home, ClipboardList, Compass, User } from 'lucide-react-native';
 
 export default function TabsLayout() {
     return (
-        <Tabs screenOptions={{
-            headerShown: true, // Esto pondrá el título arriba en el home
-            tabBarActiveTintColor: '#0ea5e9', // Color sky-500
-        }}>
-            <Tabs.Screen name="home" options={{ title: 'Inicio', tabBarIcon: ({ color }) => <Home color={color} size={24} />,}} />
-
-            <Tabs.Screen name="alerts" options={{ title: 'Alertas', tabBarIcon: ({ color }) => <Bell color={color} size={24} />,}} />
-            
-            <Tabs.Screen name="profile" options={{ title: 'Perfil', tabBarIcon: ({ color }) => <User color={color} size={24} />,}} />
+        <Tabs
+            screenOptions={{
+                headerShown: false,
+                tabBarActiveTintColor: '#002d4e',
+                tabBarInactiveTintColor: '#9CA3AF',
+                tabBarStyle: { backgroundColor: '#fff', borderTopColor: '#E5E7EB' },
+            }}
+        >
+            <Tabs.Screen
+                name="home"
+                options={{
+                    tabBarLabel: 'Inicio',
+                    tabBarIcon: ({ color }) => <Home color={color} strokeWidth={2.3} size={24} />,
+                }}
+            />
+            <Tabs.Screen
+                name="servicio"
+                options={{
+                    tabBarLabel: 'Servicio',
+                    tabBarIcon: ({ color }) => <ClipboardList color={color} strokeWidth={2.3} size={24} />,
+                }}
+            />
+            <Tabs.Screen
+                name="brujula"
+                options={{
+                    tabBarLabel: 'Brújula',
+                    tabBarIcon: ({ color }) => <Compass color={color} strokeWidth={2.3} size={24} />,
+                }}
+            />
+            <Tabs.Screen
+                name="perfil"
+                options={{
+                    tabBarLabel: 'Perfil',
+                    tabBarIcon: ({ color }) => <User color={color} strokeWidth={2.3} size={24} />,
+                }}
+            />
         </Tabs>
     );
 }

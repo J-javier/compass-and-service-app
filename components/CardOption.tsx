@@ -1,32 +1,45 @@
 import { Pressable, Text, View } from "react-native";
 import { ChevronRight } from "lucide-react-native";
 import { ReactNode } from "react";
-import { Link } from "expo-router";
+import { useRouter} from "expo-router";
 
 interface CardOptionProps {
     title: string;
     description: string;
     icon: ReactNode;
+    backgroundIcon?: string;
     bgColor?: string;
+    textColor?: string;
+    titleColor?: string;
     enlace?: string;
 }
 
-export default function CardOption({ title, description, icon, bgColor, enlace }: CardOptionProps) {
+export default function CardOption({ title, description, icon, backgroundIcon, bgColor, textColor, titleColor, enlace }: CardOptionProps) {
+    const router = useRouter();
     return (
-            <Link href={enlace || "#"}>
-                <Pressable
-                    className="bg-white p-4 rounded-3xl flex-row items-center justify-around h-36 active:opacity-70 w-full"
-                    style={{ shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 12, elevation: 8 }}
+            <Pressable
+                    className="rounded-3xl p-6 mb-4 h-44 active:opacity-90"
+                    style={{ backgroundColor: bgColor , shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}
+                    onPress={() => router.push(enlace || '/')}
                 >
-                <View className={`rounded-2xl ${bgColor} p-4 h-20 w-20 items-center justify-center`}>
-                    {icon}
-                </View>
-                <View className="mt-2">
-                    <Text className="text-2xl font-medium text-gray-700">{title}</Text>
-                    <Text className="text-base text-gray-500 w-40">{description}</Text>
-                </View>
-                <ChevronRight color='#9CA3AF' size={22} />
+                    <View className="flex-row items-center justify-between">
+                        <View className="flex-col gap-4 flex-1 w-full">
+                            <View className="flex-row justify-between w-full">
+                                <View className="w-16 h-16 rounded-2xl items-center justify-center " style={{ backgroundColor: backgroundIcon }}>
+                                    {icon}
+                                </View>
+                                <ChevronRight size={30} color="#557b9d" />
+                            </View>
+                            <View>
+                                <Text className={`text-2xl font-bold`} style={{ color: titleColor }}>
+                                    {title}
+                                </Text>
+                                <Text className={`text-base`} style={{ color: textColor }}>
+                                    {description}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
                 </Pressable>
-            </Link>
     );
 }

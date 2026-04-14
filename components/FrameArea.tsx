@@ -15,7 +15,6 @@ export default function FrameArea({ children }: FrameAreaProps) {
             className="flex-1 bg-gray-100"
             style={{
                 paddingTop: insets.top + basePadding,
-                paddingBottom: insets.bottom + basePadding,
                 paddingLeft: insets.left + basePadding,
                 paddingRight: insets.right + basePadding,
             }}

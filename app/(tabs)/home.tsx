@@ -87,7 +87,7 @@ export default function Home() {
                     {/* Consejo del Mentor */}
 
                     <View
-                        className="bg-blue-50 rounded-2xl p-4 flex-col items-start gap-1 w-6/12 h-full"
+                        className="bg-blue-50 rounded-2xl p-3 flex-col items-start gap-1 w-6/12 h-full"
                         style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}
                     >
                         <View className="w-full h-10 rounded-full items-center flex-row gap-2">

@@ -1,19 +1,10 @@
-import { ScrollView, Text, View, Pressable } from 'react-native';
-import {
-    CalendarDays,
-    ChevronRight,
-    Sparkles,
-    Users,
-    GraduationCap,
-    Briefcase,
-    Dumbbell,
-    Plus,
-    Printer,
-    PenLine,
-    Info,
-} from 'lucide-react-native';
+import React, { useState } from 'react'
+import { ScrollView, Text, View, Pressable, TextInput } from 'react-native';
+import { ChevronRight, Sparkles, Users, GraduationCap, Briefcase, Dumbbell, Plus, Printer, PenLine, Info } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import Header from '@/components/Header';
+
 
 const USER = {
     name: 'Alfredo Mariscal',
@@ -79,61 +70,72 @@ export default function Brujula() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
 
+    const [isEditingVision, setIsEditingVision] = useState<boolean>(false);
+    const [vision, setVision] = useState<string>(USER.vision);
+    const [visionDraft, setVisionDraft] = useState<string>(USER.vision);
+
+    const handleStartEditVision = () => {
+        setVisionDraft(vision);
+        setIsEditingVision(true);
+    };
+
+    const handleCancelEditVision = () => {
+        setVisionDraft(vision);
+        setIsEditingVision(false);
+    };
+
+    const handleSaveVision = () => {
+        setVision(visionDraft.trim() || vision);
+        setIsEditingVision(false);
+    };
+
     return (
         <View className="flex-1 bg-gray-50" style={{ paddingTop: insets.top }}>
+            {/* User header */}
+            <Header user={USER} />
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-                {/* User header */}
-                <View className="flex-row items-center gap-4 mb-5">
-                    <View className="w-16 h-16 rounded-2xl bg-[#002d4e] items-center justify-center">
-                        <Text className="text-white text-xl font-bold">{USER.initials}</Text>
-                    </View>
-                    <View className="flex-1">
-                        <Text className="text-xl font-bold text-gray-900">{USER.name}</Text>
-                        <Text className="text-sm text-gray-500 mb-1">{USER.role}</Text>
-                        <View className="flex-row items-center gap-1">
-                            <CalendarDays color="#3B82F6" size={13} />
-                            <Text className="text-xs text-blue-500 font-medium uppercase tracking-wide">
-                                Plan {USER.plan}
-                            </Text>
-                        </View>
-                    </View>
-                    <View className="w-3 h-3 rounded-full bg-green-500" />
-                </View>
 
-                {/* Vision card */}
-                <View
-                    className="bg-white rounded-2xl p-5 mb-5"
-                    style={{ shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }}
-                >
+                <View className="bg-white rounded-2xl p-5 mb-5" style={{ shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }}>
+
                     <View className="flex-row items-center justify-between mb-3">
                         <View className="flex-row items-center gap-2">
                             <Sparkles color="#F59E0B" size={20} />
                             <Text className="text-base font-bold text-gray-900">Mi Visión Personal</Text>
                         </View>
-                        <Pressable className="active:opacity-70">
-                            <PenLine color="#9CA3AF" size={18} />
-                        </Pressable>
-                    </View>
-                    <Text className="text-gray-600 text-sm leading-6 italic">{USER.vision}</Text>
-                </View>
 
-                {/* Áreas de Enfoque header */}
-                <View className="flex-row items-center justify-between mb-2">
-                    <Text className="text-xs text-gray-400 uppercase tracking-widest font-semibold">
-                        Áreas de Enfoque
-                    </Text>
-                    <Text className="text-sm font-semibold text-blue-500">
-                        {completedCount} DE {AREAS.length}
-                    </Text>
-                </View>
-                {/* Progress bar */}
-                <View className="h-2 bg-gray-200 rounded-full overflow-hidden mb-5">
-                    <View
-                        className="h-full bg-blue-500 rounded-full"
-                        style={{ width: `${(completedCount / AREAS.length) * 100}%` }}
+                        {!isEditingVision ? (
+                            <Pressable className="active:opacity-70" onPress={handleStartEditVision}>
+                                <PenLine color="#9CA3AF" size={18} />
+                            </Pressable>
+                        ) : (
+                            <View className="flex-row items-center gap-2">
+                                <Pressable
+                                    className="px-3 py-1.5 rounded-lg bg-gray-100 active:opacity-70"
+                                    onPress={handleCancelEditVision}
+                                >
+                                    <Text className="text-xs font-semibold text-gray-600">Cancelar</Text>
+                                </Pressable>
+                                <Pressable
+                                    className="px-3 py-1.5 rounded-lg bg-blue-500 active:opacity-70"
+                                    onPress={handleSaveVision}
+                                >
+                                    <Text className="text-xs font-semibold text-white">Guardar</Text>
+                                </Pressable>
+                            </View>
+                        )}
+                    </View>
+
+                    <TextInput
+                        className={`text-sm leading-6 ${isEditingVision ? 'text-gray-800' : 'text-gray-600 italic'}`}
+                        value={isEditingVision ? visionDraft : vision}
+                        onChangeText={setVisionDraft}
+                        editable={isEditingVision}
+                        multiline
+                        textAlignVertical="top"
+                        placeholder="Escribe tu visión personal..."
+                        placeholderTextColor="#9CA3AF"
                     />
                 </View>
-
                 {/* Area list */}
                 <View className="gap-3 mb-5">
                     {AREAS.map((area) => {

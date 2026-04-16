@@ -1,10 +1,9 @@
 import React, { useState } from 'react'
 import { ScrollView, Text, View, Pressable, TextInput } from 'react-native';
-import { ChevronRight, Sparkles, Users, GraduationCap, Briefcase, Dumbbell, Plus, Printer, PenLine, Info } from 'lucide-react-native';
+import { Sparkles, Printer, PenLine, Info, Users, GraduationCap, Briefcase, Dumbbell } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import CardAreasBrujula from '@/components/CardAreasBrujula';
 import Header from '@/components/Header';
-
 
 const USER = {
     name: 'Alfredo Mariscal',
@@ -23,7 +22,7 @@ const AREAS = [
         icon: Sparkles,
         iconColor: '#7C3AED',
         iconBg: '#EDE9FE',
-        status: 'COMPLETO',
+        status: 'COMPLETO' as const,
     },
     {
         id: 2,
@@ -32,7 +31,7 @@ const AREAS = [
         icon: Users,
         iconColor: '#DC2626',
         iconBg: '#FEE2E2',
-        status: 'COMPLETO',
+        status: 'COMPLETO' as const,
     },
     {
         id: 3,
@@ -41,7 +40,7 @@ const AREAS = [
         icon: GraduationCap,
         iconColor: '#2563EB',
         iconBg: '#DBEAFE',
-        status: 'COMPLETO',
+        status: 'COMPLETO' as const,
     },
     {
         id: 4,
@@ -50,7 +49,7 @@ const AREAS = [
         icon: Briefcase,
         iconColor: '#6B7280',
         iconBg: '#F3F4F6',
-        status: 'PENDIENTE',
+        status: 'PENDIENTE' as const,
     },
     {
         id: 5,
@@ -59,7 +58,7 @@ const AREAS = [
         icon: Dumbbell,
         iconColor: '#6B7280',
         iconBg: '#F3F4F6',
-        status: 'PENDIENTE',
+        status: 'PENDIENTE' as const,
     },
 ];
 
@@ -68,7 +67,6 @@ const allComplete = completedCount === AREAS.length;
 
 export default function Brujula() {
     const insets = useSafeAreaInsets();
-    const router = useRouter();
 
     const [isEditingVision, setIsEditingVision] = useState<boolean>(false);
     const [vision, setVision] = useState<string>(USER.vision);
@@ -91,12 +89,10 @@ export default function Brujula() {
 
     return (
         <View className="flex-1 bg-gray-50" style={{ paddingTop: insets.top }}>
-            {/* User header */}
             <Header user={USER} />
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
 
                 <View className="bg-white rounded-2xl p-5 mb-5" style={{ shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }}>
-
                     <View className="flex-row items-center justify-between mb-3">
                         <View className="flex-row items-center gap-2">
                             <Sparkles color="#F59E0B" size={20} />
@@ -111,14 +107,12 @@ export default function Brujula() {
                             <View className="flex-row items-center gap-2">
                                 <Pressable
                                     className="px-3 py-1.5 rounded-lg bg-gray-100 active:opacity-70"
-                                    onPress={handleCancelEditVision}
-                                >
+                                    onPress={handleCancelEditVision}>
                                     <Text className="text-xs font-semibold text-gray-600">Cancelar</Text>
                                 </Pressable>
                                 <Pressable
                                     className="px-3 py-1.5 rounded-lg bg-blue-500 active:opacity-70"
-                                    onPress={handleSaveVision}
-                                >
+                                    onPress={handleSaveVision}>
                                     <Text className="text-xs font-semibold text-white">Guardar</Text>
                                 </Pressable>
                             </View>
@@ -136,57 +130,13 @@ export default function Brujula() {
                         placeholderTextColor="#9CA3AF"
                     />
                 </View>
-                {/* Area list */}
+
                 <View className="gap-3 mb-5">
-                    {AREAS.map((area) => {
-                        const IconComp = area.icon;
-                        const isPending = area.status === 'PENDIENTE';
-                        return (
-                            <Pressable
-                                key={area.id}
-                                className={`bg-white rounded-2xl p-4 flex-row items-center gap-4 active:opacity-70 ${isPending ? 'border border-dashed border-gray-200' : ''}`}
-                                style={
-                                    isPending
-                                        ? { backgroundColor: '#FAFAFA' }
-                                        : { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }
-                                }
-                                onPress={() => !isPending && router.push('/editar-metas')}
-                            >
-                                <View
-                                    className="w-12 h-12 rounded-xl items-center justify-center"
-                                    style={{ backgroundColor: area.iconBg }}
-                                >
-                                    <IconComp color={area.iconColor} size={22} />
-                                </View>
-                                <View className="flex-1">
-                                    <Text
-                                        className={`text-base font-semibold ${isPending ? 'text-gray-400' : 'text-gray-800'}`}
-                                    >
-                                        {area.name}
-                                    </Text>
-                                    <Text className="text-sm text-gray-400">{area.subtitle}</Text>
-                                </View>
-                                {isPending ? (
-                                    <View className="flex-row items-center gap-2">
-                                        <Text className="text-sm text-gray-400 font-medium">{area.status}</Text>
-                                        <View className="w-7 h-7 rounded-full border-2 border-gray-300 items-center justify-center">
-                                            <Plus color="#9CA3AF" size={14} />
-                                        </View>
-                                    </View>
-                                ) : (
-                                    <View className="flex-row items-center gap-2">
-                                        <View className="bg-green-100 px-2 py-1 rounded-lg">
-                                            <Text className="text-green-600 text-xs font-bold">{area.status}</Text>
-                                        </View>
-                                        <ChevronRight color="#D1D5DB" size={18} />
-                                    </View>
-                                )}
-                            </Pressable>
-                        );
-                    })}
+                    {AREAS.map((area) => (
+                        <CardAreasBrujula key={area.id} area={area} />
+                    ))}
                 </View>
 
-                {/* Info note */}
                 {!allComplete && (
                     <View className="flex-row items-start gap-3 bg-blue-50 rounded-2xl p-4 mb-5">
                         <Info color="#3B82F6" size={16} style={{ marginTop: 2 }} />
@@ -197,11 +147,9 @@ export default function Brujula() {
                     </View>
                 )}
 
-                {/* Print button */}
                 <Pressable
                     className={`flex-row items-center justify-center gap-3 p-4 rounded-2xl ${allComplete ? 'bg-[#002d4e] active:opacity-70' : 'bg-gray-200'}`}
-                    disabled={!allComplete}
-                >
+                    disabled={!allComplete}>
                     <Printer color={allComplete ? '#fff' : '#9CA3AF'} size={20} />
                     <Text className={`font-semibold text-base ${allComplete ? 'text-white' : 'text-gray-400'}`}>
                         Imprimir Brújula

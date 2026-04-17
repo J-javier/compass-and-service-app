@@ -90,8 +90,9 @@ export default function Brujula() {
     return (
         <View className="flex-1 bg-gray-50" style={{ paddingTop: insets.top }}>
             <Header user={USER} />
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
 
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+                {/* Visión Personal */}
                 <View className="bg-white rounded-2xl p-5 mb-5" style={{ shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }}>
                     <View className="flex-row items-center justify-between mb-3">
                         <View className="flex-row items-center gap-2">
@@ -130,6 +131,8 @@ export default function Brujula() {
                         placeholderTextColor="#9CA3AF"
                     />
                 </View>
+
+                {/* Áreas de la Brújula Metas */}
 
                 <View className="gap-3 mb-5">
                     {AREAS.map((area) => (

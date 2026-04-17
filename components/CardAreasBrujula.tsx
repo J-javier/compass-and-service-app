@@ -23,20 +23,17 @@ function CardAreasBrujula({ area }: Props) {
     return (
         <Pressable
             className={`flex-row items-center gap-4 rounded-2xl bg-white p-4 active:opacity-70 ${isPending ? 'border border-dashed border-gray-200' : ''}`}
-            style={
-                isPending
-                    ? { backgroundColor: '#FAFAFA' }
-                    : { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }
-            }
+            style={ { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 } }
             onPress={() => !isPending && router.push('/editar-metas')}>
             <View
                 className="h-12 w-12 items-center justify-center rounded-xl"
                 style={{ backgroundColor: area.iconBg }}>
                 <IconComp color={area.iconColor} size={22} />
             </View>
+
             <View className="flex-1">
                 <Text
-                    className={`text-base font-semibold ${isPending ? 'text-gray-400' : 'text-gray-800'}`}>
+                    className={`text-base font-semibold text-gray-800`}>
                     {area.name}
                 </Text>
                 <Text className="text-sm text-gray-400">{area.subtitle}</Text>

@@ -29,8 +29,8 @@ const AREAS = [
         name: 'Familiar',
         subtitle: 'Esposo, Padre e Hijo',
         icon: Users,
-        iconColor: '#DC2626',
-        iconBg: '#FEE2E2',
+        iconColor: '#ffc000',
+        iconBg: '#FFF6DC',
         status: 'COMPLETO' as const,
     },
     {
@@ -38,8 +38,8 @@ const AREAS = [
         name: 'Intelectual',
         subtitle: 'Educación y Cursos',
         icon: GraduationCap,
-        iconColor: '#2563EB',
-        iconBg: '#DBEAFE',
+        iconColor: '#00b050',
+        iconBg: '#DCEED8',
         status: 'COMPLETO' as const,
     },
     {
@@ -47,8 +47,8 @@ const AREAS = [
         name: 'Laboral',
         subtitle: 'Define tus metas',
         icon: Briefcase,
-        iconColor: '#6B7280',
-        iconBg: '#F3F4F6',
+        iconColor: '#2563EB',
+        iconBg: '#DBEAFE',
         status: 'PENDIENTE' as const,
     },
     {
@@ -56,8 +56,8 @@ const AREAS = [
         name: 'Salud / Físico',
         subtitle: 'Define tus metas',
         icon: Dumbbell,
-        iconColor: '#6B7280',
-        iconBg: '#F3F4F6',
+        iconColor: '#DC2626',
+        iconBg: '#FEE2E2',
         status: 'PENDIENTE' as const,
     },
 ];

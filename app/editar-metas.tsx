@@ -1,13 +1,5 @@
 import { useState } from 'react';
-import {
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Lightbulb, Save } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -116,6 +108,7 @@ export default function EditarMetas() {
                                         Meta {selectedYear}
                                     </Text>
                                 </View>
+                                
                                 {/* Text area */}
                                 <View className="px-4 pb-3">
                                     <TextInput
@@ -141,7 +134,7 @@ export default function EditarMetas() {
                     <Lightbulb color="#3B82F6" size={18} style={{ marginTop: 1 }} />
                     <Text className="flex-1 text-xs text-blue-600 leading-5">
                         <Text className="font-bold">Consejo: </Text>
-                        Sé específico con tus metas. En lugar de "Leer más", intenta "Leer 10 páginas diarias".
+                        Sé específico con tus metas. En lugar de &quot;Leer más&quot;, intenta &quot;Leer 10 páginas diarias&quot;.
                     </Text>
                 </View>
 

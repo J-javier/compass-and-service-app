@@ -18,13 +18,39 @@ export interface Area {
     initialValues: InitialValues;
 }
 
-const GENERIC_GOALS: GoalsByYear = {
-    2025: [{ id: 1, name: 'Meta Principal', placeholder: 'Escribe tu meta para este enfoque...' }],
-    2026: [{ id: 1, name: 'Meta Principal', placeholder: 'Escribe tu meta para este enfoque...' }],
-    2027: [{ id: 1, name: 'Meta Principal', placeholder: 'Escribe tu meta para este enfoque...' }],
-    2028: [{ id: 1, name: 'Meta Principal', placeholder: 'Escribe tu meta para este enfoque...' }],
-    2029: [{ id: 1, name: 'Meta Principal', placeholder: 'Escribe tu meta para este enfoque...' }],
-};
+const ESPIRITUAL_GOALS = [
+    { id: 1, name: 'Proceso de Conversión', placeholder: 'Escribe tu meta para este enfoque...' },
+    { id: 2, name: 'Ser un Discípulo', placeholder: 'Escribe tu meta para este enfoque...' },
+];
+
+const FAMILIAR_GOALS = [
+    { id: 1, name: 'Esposo / Novio', placeholder: 'Escribe tu meta para este enfoque...' },
+    { id: 2, name: 'Padre', placeholder: 'Escribe tu meta para este enfoque...' },
+    { id: 3, name: 'Hijo', placeholder: 'Escribe tu meta para este enfoque...' },
+];
+
+const INTELECTUAL_GOALS = [
+    { id: 1, name: 'Educación Formal', placeholder: 'Escribe tu meta para este enfoque...' },
+    { id: 2, name: 'Autoeducación', placeholder: 'Escribe tu meta para este enfoque...' },
+];
+
+const LABORAL_GOALS = [
+    { id: 1, name: 'Empleado', placeholder: 'Escribe tu meta para este enfoque...' },
+    { id: 2, name: 'Emprendimiento', placeholder: 'Escribe tu meta para este enfoque...' },
+];
+
+const SALUD_GOALS = [
+    { id: 1, name: 'Ejercicios', placeholder: 'Escribe tu meta para este enfoque...' },
+    { id: 2, name: 'Hobbies', placeholder: 'Escribe tu meta para este enfoque...' },
+];
+
+const allYears = (goals: { id: number; name: string; placeholder: string }[]): GoalsByYear => ({
+    2025: goals,
+    2026: goals,
+    2027: goals,
+    2028: goals,
+    2029: goals,
+});
 
 export const AREAS: Area[] = [
     {
@@ -37,16 +63,7 @@ export const AREAS: Area[] = [
         accentColor: '#7C3AED',
         subtitleColor: '#E9D5FF',
         status: 'COMPLETO',
-        goalsByYear: {
-            2025: [
-                { id: 1, name: 'Proceso de Conversión', placeholder: 'Escribe tu meta para este enfoque...' },
-                { id: 2, name: 'Ser un Discípulo', placeholder: 'Escribe tu meta para este enfoque...' },
-            ],
-            2026: [{ id: 1, name: 'Proceso de Conversión', placeholder: 'Escribe tu meta para este enfoque...' }],
-            2027: [{ id: 1, name: 'Proceso de Conversión', placeholder: 'Escribe tu meta para este enfoque...' }],
-            2028: [{ id: 1, name: 'Proceso de Conversión', placeholder: 'Escribe tu meta para este enfoque...' }],
-            2029: [{ id: 1, name: 'Proceso de Conversión', placeholder: 'Escribe tu meta para este enfoque...' }],
-        },
+        goalsByYear: allYears(ESPIRITUAL_GOALS),
         initialValues: {
             2025: {
                 1: 'Yo estudio las escrituras 15 minutos al día para fortalecer mi fe.',
@@ -57,23 +74,14 @@ export const AREAS: Area[] = [
     {
         id: 2,
         name: 'Familiar',
-        subtitle: 'Esposo, Padre e Hijo',
+        subtitle: 'Esposo/Novio, Padre e Hijo',
         icon: Users,
         iconColor: '#ffc000',
         iconBg: '#FFF6DC',
         accentColor: '#D97706',
         subtitleColor: '#FDE68A',
         status: 'COMPLETO',
-        goalsByYear: {
-            2025: [
-                { id: 1, name: 'Como Esposo', placeholder: 'Escribe tu meta para este enfoque...' },
-                { id: 2, name: 'Como Padre', placeholder: 'Escribe tu meta para este enfoque...' },
-            ],
-            2026: [{ id: 1, name: 'Como Esposo', placeholder: 'Escribe tu meta para este enfoque...' }],
-            2027: [{ id: 1, name: 'Como Esposo', placeholder: 'Escribe tu meta para este enfoque...' }],
-            2028: [{ id: 1, name: 'Como Esposo', placeholder: 'Escribe tu meta para este enfoque...' }],
-            2029: [{ id: 1, name: 'Como Esposo', placeholder: 'Escribe tu meta para este enfoque...' }],
-        },
+        goalsByYear: allYears(FAMILIAR_GOALS),
         initialValues: {
             2025: {
                 1: 'Yo dedico tiempo de calidad con mi esposa cada semana para fortalecer nuestra relación.',
@@ -91,16 +99,7 @@ export const AREAS: Area[] = [
         accentColor: '#059669',
         subtitleColor: '#A7F3D0',
         status: 'COMPLETO',
-        goalsByYear: {
-            2025: [
-                { id: 1, name: 'Educación Formal', placeholder: 'Escribe tu meta para este enfoque...' },
-                { id: 2, name: 'Lectura', placeholder: 'Escribe tu meta para este enfoque...' },
-            ],
-            2026: [{ id: 1, name: 'Educación Formal', placeholder: 'Escribe tu meta para este enfoque...' }],
-            2027: [{ id: 1, name: 'Educación Formal', placeholder: 'Escribe tu meta para este enfoque...' }],
-            2028: [{ id: 1, name: 'Educación Formal', placeholder: 'Escribe tu meta para este enfoque...' }],
-            2029: [{ id: 1, name: 'Educación Formal', placeholder: 'Escribe tu meta para este enfoque...' }],
-        },
+        goalsByYear: allYears(INTELECTUAL_GOALS),
         initialValues: {
             2025: {
                 1: 'Yo completo al menos un curso de desarrollo profesional en línea cada trimestre.',
@@ -118,7 +117,7 @@ export const AREAS: Area[] = [
         accentColor: '#2563EB',
         subtitleColor: '#BFDBFE',
         status: 'PENDIENTE',
-        goalsByYear: GENERIC_GOALS,
+        goalsByYear: allYears(LABORAL_GOALS),
         initialValues: {},
     },
     {
@@ -131,7 +130,7 @@ export const AREAS: Area[] = [
         accentColor: '#DC2626',
         subtitleColor: '#FECACA',
         status: 'PENDIENTE',
-        goalsByYear: GENERIC_GOALS,
+        goalsByYear: allYears(SALUD_GOALS),
         initialValues: {},
     },
 ];

@@ -8,45 +8,25 @@ import {
     TextInput,
     View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import {
-    ChevronLeft,
-    Sparkles,
-    Lightbulb,
-    Save,
-    Users,
-    GraduationCap,
-    Grid3x3,
-} from 'lucide-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { ChevronLeft, Lightbulb, Save } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AREAS } from '@/constants/areas';
 
 const YEARS = [2025, 2026, 2027, 2028, 2029];
-
-const GOALS_BY_YEAR: Record<number, { id: number; name: string; placeholder: string }[]> = {
-    2025: [
-        { id: 1, name: 'Proceso de Conversión', placeholder: 'Escribe tu meta para este enfoque...' },
-        { id: 2, name: 'Ser un Discípulo', placeholder: 'Escribe tu meta para este enfoque...' },
-    ],
-    2026: [{ id: 1, name: 'Proceso de Conversión', placeholder: 'Escribe tu meta para este enfoque...' }],
-    2027: [{ id: 1, name: 'Proceso de Conversión', placeholder: 'Escribe tu meta para este enfoque...' }],
-    2028: [{ id: 1, name: 'Proceso de Conversión', placeholder: 'Escribe tu meta para este enfoque...' }],
-    2029: [{ id: 1, name: 'Proceso de Conversión', placeholder: 'Escribe tu meta para este enfoque...' }],
-};
-
-const INITIAL_VALUES: Record<number, Record<number, string>> = {
-    2025: {
-        1: 'Yo estudio las escrituras 15 minutos al día para fortalecer mi fe.',
-        2: 'Yo cumplo con mis llamamientos al bendecir la vida de otros a través del servicio constante.',
-    },
-};
 
 export default function EditarMetas() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    const [selectedYear, setSelectedYear] = useState(2025);
-    const [values, setValues] = useState<Record<number, Record<number, string>>>(INITIAL_VALUES);
+    const { areaId } = useLocalSearchParams<{ areaId: string }>();
 
-    const goals = GOALS_BY_YEAR[selectedYear] ?? [];
+    const area = AREAS.find((a) => a.id === Number(areaId)) ?? AREAS[0];
+    const IconComp = area.icon;
+
+    const [selectedYear, setSelectedYear] = useState(2025);
+    const [values, setValues] = useState<Record<number, Record<number, string>>>(area.initialValues);
+
+    const goals = area.goalsByYear[selectedYear] ?? [];
 
     const getValue = (goalId: number) => values[selectedYear]?.[goalId] ?? '';
 
@@ -81,13 +61,18 @@ export default function EditarMetas() {
                 contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
             >
                 {/* Area card */}
-                <View className="rounded-2xl p-5 flex-row items-center gap-4 mb-5" style={{ backgroundColor: '#7C3AED' }}>
+                <View
+                    className="rounded-2xl p-5 flex-row items-center gap-4 mb-5"
+                    style={{ backgroundColor: area.accentColor }}
+                >
                     <View className="w-12 h-12 rounded-xl bg-white/20 items-center justify-center">
-                        <Sparkles color="#fff" size={24} />
+                        <IconComp color="#fff" size={24} />
                     </View>
                     <View>
-                        <Text className="text-white text-xl font-bold">Espiritual</Text>
-                        <Text className="text-purple-200 text-sm">Planificación Quinquenal 2025 - 2029</Text>
+                        <Text className="text-white text-xl font-bold">{area.name}</Text>
+                        <Text className="text-sm" style={{ color: area.subtitleColor }}>
+                            Planificación Quinquenal 2025 - 2029
+                        </Text>
                     </View>
                 </View>
 
@@ -121,7 +106,10 @@ export default function EditarMetas() {
                                 {/* Goal header */}
                                 <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
                                     <View className="flex-row items-center gap-2">
-                                        <View className="w-1 h-5 rounded-full bg-[#7C3AED]" />
+                                        <View
+                                            className="w-1 h-5 rounded-full"
+                                            style={{ backgroundColor: area.accentColor }}
+                                        />
                                         <Text className="text-base font-bold text-gray-800">{goal.name}</Text>
                                     </View>
                                     <Text className="text-xs text-gray-400 font-semibold uppercase tracking-wide">
@@ -166,24 +154,25 @@ export default function EditarMetas() {
 
             {/* Floating quick-area buttons */}
             <View className="absolute right-5 bottom-32 gap-3">
-                <Pressable
-                    className="w-12 h-12 rounded-full bg-yellow-100 items-center justify-center active:opacity-70"
-                    style={{ shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6, elevation: 4 }}
-                >
-                    <Users color="#D97706" size={20} />
-                </Pressable>
-                <Pressable
-                    className="w-12 h-12 rounded-full bg-green-100 items-center justify-center active:opacity-70"
-                    style={{ shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6, elevation: 4 }}
-                >
-                    <GraduationCap color="#059669" size={20} />
-                </Pressable>
-                <Pressable
-                    className="w-12 h-12 rounded-full bg-[#002d4e] items-center justify-center active:opacity-70"
-                    style={{ shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6, elevation: 4 }}
-                >
-                    <Grid3x3 color="#fff" size={20} />
-                </Pressable>
+                {AREAS.filter((a) => a.id !== area.id).slice(0, 3).map((a) => {
+                    const QuickIcon = a.icon;
+                    return (
+                        <Pressable
+                            key={a.id}
+                            className="w-12 h-12 rounded-full items-center justify-center active:opacity-70"
+                            style={{
+                                backgroundColor: a.iconBg,
+                                shadowColor: '#000',
+                                shadowOpacity: 0.1,
+                                shadowRadius: 6,
+                                elevation: 4,
+                            }}
+                            onPress={() => router.replace(`/editar-metas?areaId=${a.id}`)}
+                        >
+                            <QuickIcon color={a.iconColor} size={20} />
+                        </Pressable>
+                    );
+                })}
             </View>
         </KeyboardAvoidingView>
     );

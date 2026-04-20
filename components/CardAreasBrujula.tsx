@@ -24,7 +24,7 @@ function CardAreasBrujula({ area }: Props) {
         <Pressable
             className={`flex-row items-center gap-4 rounded-2xl bg-white p-4 active:opacity-70 ${isPending ? 'border border-dashed border-gray-200' : ''}`}
             style={ { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 } }
-            onPress={() => router.push('/editar-metas')}>
+            onPress={() => router.push(`/editar-metas?areaId=${area.id}`)}>
             <View
                 className="h-12 w-12 items-center justify-center rounded-xl"
                 style={{ backgroundColor: area.iconBg }}>

@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { ScrollView, Text, View, Pressable, TextInput } from 'react-native';
-import { Sparkles, Printer, PenLine, Info, Users, GraduationCap, Briefcase, Dumbbell } from 'lucide-react-native';
+import { Sparkles, Printer, PenLine, Info } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CardAreasBrujula from '@/components/CardAreasBrujula';
 import Header from '@/components/Header';
+import { AREAS } from '@/constants/areas';
 
 const USER = {
     name: 'Alfredo Mariscal',
@@ -13,54 +14,6 @@ const USER = {
     vision:
         '"Quiero ser una persona útil y preparada en lo temporal, espiritual, intelectual, física y familiar para poder ayudar a mi familia, comunidad y adaptarme a los cambios de la vida."',
 };
-
-const AREAS = [
-    {
-        id: 1,
-        name: 'Espiritual',
-        subtitle: 'Proceso de Conversión',
-        icon: Sparkles,
-        iconColor: '#7C3AED',
-        iconBg: '#EDE9FE',
-        status: 'COMPLETO' as const,
-    },
-    {
-        id: 2,
-        name: 'Familiar',
-        subtitle: 'Esposo, Padre e Hijo',
-        icon: Users,
-        iconColor: '#ffc000',
-        iconBg: '#FFF6DC',
-        status: 'COMPLETO' as const,
-    },
-    {
-        id: 3,
-        name: 'Intelectual',
-        subtitle: 'Educación y Cursos',
-        icon: GraduationCap,
-        iconColor: '#00b050',
-        iconBg: '#DCEED8',
-        status: 'COMPLETO' as const,
-    },
-    {
-        id: 4,
-        name: 'Laboral',
-        subtitle: 'Define tus metas',
-        icon: Briefcase,
-        iconColor: '#2563EB',
-        iconBg: '#DBEAFE',
-        status: 'PENDIENTE' as const,
-    },
-    {
-        id: 5,
-        name: 'Salud / Físico',
-        subtitle: 'Define tus metas',
-        icon: Dumbbell,
-        iconColor: '#DC2626',
-        iconBg: '#FEE2E2',
-        status: 'PENDIENTE' as const,
-    },
-];
 
 const completedCount = AREAS.filter((a) => a.status === 'COMPLETO').length;
 const allComplete = completedCount === AREAS.length;

@@ -29,8 +29,9 @@ export default function ScreenLogin() {
                 <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
                     <View className='py-10'>
                         <Image
-                            source={require('../assets/compass2.jpg')}
-                            className='w-48 h-48 mx-auto mb-5 rounded-full'
+                            // source={require('../assets/compass2.jpg')}
+                            source={require('../assets/LOGINLOGO.png')}
+                            className='w-48 h-48 mx-auto mb-5 rounded-full bg-white'
                         />
                         <Text className='text-gray-400 text-center uppercase tracking-widest'>Brújula de Vida</Text>
                         <Text className='text-white text-3xl font-bold text-center mt-10'>Welcome to Compass HS</Text>

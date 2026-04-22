@@ -1,14 +1,5 @@
 import { useState } from 'react';
-import {
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
-} from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View} from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Calendar, Clock, FileText, Camera } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -48,8 +39,8 @@ export default function ReportarHS() {
                 {/* Logo */}
                 <View className="items-center mb-6">
                     <Image
-                        source={require('../assets/Sinfondo.png')}
-                        style={{ width: 80, height: 80 }}
+                        source={require('../assets/logoTres.png')}
+                        style={{ width: 250, height: 80 }}
                         resizeMode="contain"
                     />
                 </View>
@@ -57,7 +48,7 @@ export default function ReportarHS() {
                 {/* Info card */}
                 <View className="bg-blue-50 rounded-2xl p-4 mb-8">
                     <Text className="text-blue-700 text-sm leading-6">
-                        Registra tus horas de servicio comunitario aquí. Asegúrate de que la descripción sea detallada
+                        Registra tus horas de servicio aquí. Asegúrate de que la descripción sea detallada
                         para facilitar la validación.
                     </Text>
                 </View>
@@ -124,7 +115,7 @@ export default function ReportarHS() {
                 {/* Submit button */}
                 <Pressable className="bg-[#002d4e] rounded-2xl py-5 flex-row items-center justify-center gap-3 active:opacity-80 mb-4">
                     <Text className="text-white font-bold text-base uppercase tracking-wider">
-                        {'>'} Enviar Reporte
+                         Enviar Reporte
                     </Text>
                 </Pressable>
 

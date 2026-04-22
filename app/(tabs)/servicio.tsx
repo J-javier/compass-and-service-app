@@ -1,16 +1,19 @@
-import { Image, ScrollView, Text, View, Pressable } from 'react-native';
-import { Bell, ChevronRight, ClipboardCheck, History, Sparkles, GraduationCap } from 'lucide-react-native';
+import { ScrollView, Text, View, Pressable } from 'react-native';
+import { ChevronRight, ClipboardCheck, History, Sparkles, GraduationCap } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import Header from '@/components/Header';
 
 const USER = {
     name: 'Alfredo Mariscal',
     role: 'Desarrollo Web Frontend',
     location: 'México',
     initials: 'AM',
+    plan: '',
     hoursCompleted: 124,
     hoursGoal: 200,
 };
+
 
 export default function Servicio() {
     const insets = useSafeAreaInsets();
@@ -20,34 +23,16 @@ export default function Servicio() {
 
     return (
         <View className="flex-1 bg-gray-50" style={{ paddingTop: insets.top }}>
-            {/* Header */}
-            <View className="flex-row items-center justify-between px-6 py-4 bg-white border-b border-gray-100">
-                <Image
-                    source={require('../../assets/Sinfondo.png')}
-                    style={{ width: 48, height: 48 }}
-                    resizeMode="contain"
-                />
-                <Pressable className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center active:opacity-70">
-                    <Bell color="#374151" size={20} strokeWidth={2} />
-                </Pressable>
-            </View>
+           
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-                {/* User card */}
+                
                 <View
-                    className="bg-white rounded-2xl p-4 flex-row items-center gap-4 mb-5"
+                    className="bg-white rounded-2xl flex-row items-center gap-4 mb-5"
                     style={{ shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }}
                 >
-                    <View className="w-14 h-14 rounded-full bg-[#002d4e] items-center justify-center">
-                        <Text className="text-white text-lg font-bold">{USER.initials}</Text>
-                    </View>
-                    <View className="flex-1">
-                        <Text className="text-base font-bold text-gray-900">{USER.name}</Text>
-                        <Text className="text-sm text-gray-500">
-                            {USER.role} • {USER.location}
-                        </Text>
-                    </View>
-                    <View className="w-3 h-3 rounded-full bg-green-500" />
+
+                <Header user={USER} />
                 </View>
 
                 {/* Hours summary card */}

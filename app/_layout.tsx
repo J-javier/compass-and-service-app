@@ -13,9 +13,10 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading) return;
     const inTabs = segments[0] === '(tabs)';
+    const inLogin = segments.length === 0 || segments[0] === 'index';
     if (!user && inTabs) {
       router.replace('/');
-    } else if (user && !inTabs) {
+    } else if (user && inLogin) {
       router.replace('/(tabs)/home');
     }
   }, [user, isLoading, segments]);

@@ -1,27 +1,34 @@
 import React, { useState } from 'react';
-import { useRouter } from 'expo-router';
 import { User, Lock, Eye, EyeOff, } from 'lucide-react-native';
-import { View, Text, Image, ScrollView, TextInput, TouchableOpacity ,Alert} from 'react-native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
-
-
+import { View, Text, Image, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '@/context/AuthContext';
 
 export default function ScreenLogin() {
     const [showPassword, setShowPassword] = useState(false);
     const insets = useSafeAreaInsets();
+    const { login } = useAuth();
 
-    /* login */
-    const router = useRouter();
-    const [user, setUser] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
-    const handleLogin = () =>{
-        if (user === 'Admin' && password === '123') {
-            router.replace('/(tabs)/home'); 
-        } else {
-            Alert.alert('Error', 'Usuario o contraseña incorrectos');
+    const handleLogin = async () => {
+        if (!email.trim() || !password.trim()) {
+            Alert.alert('Error', 'Ingresa tu correo y contraseña');
+            return;
         }
-    }
+        setSubmitting(true);
+        try {
+            await login(email.trim(), password);
+            // NavigationGuard in _layout.tsx handles the redirect to /(tabs)/home
+        } catch (e: any) {
+            const msg = e?.response?.data?.detail ?? 'Usuario o contraseña incorrectos';
+            Alert.alert('Error', typeof msg === 'string' ? msg : 'Usuario o contraseña incorrectos');
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
 
     return (
@@ -42,10 +49,12 @@ export default function ScreenLogin() {
                             <View className="flex-row items-center bg-white/10 p-4 rounded-t-2xl border-b-2 border-white/30 mb-5">
                                 <User color='#94a3b8' size={20} strokeWidth={1.5} />
                                 <TextInput
-                                    placeholder="Usuario o Correo"
+                                    placeholder="Correo electrónico"
                                     placeholderTextColor="#94a3b8"
-                                    value={user}
-                                    onChangeText={setUser}
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
                                     className='text-white ml-3 flex-1'
                                 />
                             </View>
@@ -70,8 +79,17 @@ export default function ScreenLogin() {
                                 </TouchableOpacity>
                             </View>
 
-                            <TouchableOpacity activeOpacity={0.8} className='bg-sky-500 p-6 rounded-xl shadow-lg' onPress={handleLogin}>
-                                <Text className='text-white text-center font-bold text-lg'>Iniciar Sesión</Text>
+                            <TouchableOpacity
+                                activeOpacity={0.8}
+                                className='bg-sky-500 p-6 rounded-xl shadow-lg'
+                                onPress={handleLogin}
+                                disabled={submitting}
+                            >
+                                {submitting ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <Text className='text-white text-center font-bold text-lg'>Iniciar Sesión</Text>
+                                )}
                             </TouchableOpacity>
 
                         </View>

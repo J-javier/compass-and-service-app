@@ -1,5 +1,6 @@
 import { ScrollView, Text, View, Pressable } from 'react-native';
-import { ChevronRight, ClipboardCheck, History, Sparkles, GraduationCap } from 'lucide-react-native';
+import { ClipboardCheck, History, Sparkles, GraduationCap } from 'lucide-react-native';
+import CardAccionRapida from '@/components/CardAccionRapida';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Header from '@/components/Header';
@@ -56,36 +57,22 @@ export default function Servicio() {
                 <Text className="text-xs text-gray-400 uppercase tracking-widest font-semibold mb-3">
                     Acciones Rápidas
                 </Text>
+                
                 <View className="gap-3 mb-6">
-                    <Pressable
-                        className="bg-white rounded-2xl p-4 flex-row items-center gap-4 active:opacity-70"
-                        style={{ shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }}
-                        onPress={() => router.push('/reportar-hs')}
-                    >
-                        <View className="w-12 h-12 rounded-xl bg-blue-50 items-center justify-center">
-                            <ClipboardCheck color="#3B82F6" size={22} />
-                        </View>
-                        <View className="flex-1">
-                            <Text className="text-base font-semibold text-gray-800">Reportar Horas (HS)</Text>
-                            <Text className="text-sm text-gray-400">Registra un nuevo servicio realizado</Text>
-                        </View>
-                        <ChevronRight color="#D1D5DB" size={20} />
-                    </Pressable>
-
-                    <Pressable
-                        className="bg-white rounded-2xl p-4 flex-row items-center gap-4 active:opacity-70"
-                        style={{ shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }}
-                        onPress={() => router.push('/historial-hs')}
-                    >
-                        <View className="w-12 h-12 rounded-xl bg-purple-50 items-center justify-center">
-                            <History color="#8B5CF6" size={22} />
-                        </View>
-                        <View className="flex-1">
-                            <Text className="text-base font-semibold text-gray-800">Ver Historial (HS)</Text>
-                            <Text className="text-sm text-gray-400">Ver estado y detalles de reportes previos</Text>
-                        </View>
-                        <ChevronRight color="#D1D5DB" size={20} />
-                    </Pressable>
+                    <CardAccionRapida
+                        icon={<ClipboardCheck color="#3B82F6" size={22} />}
+                        iconBgClass="bg-blue-50"
+                        title="Reportar Horas (HS)"
+                        subtitle="Registra un nuevo servicio realizado"
+                        href="/reportar-hs"
+                    />
+                    <CardAccionRapida
+                        icon={<History color="#8B5CF6" size={22} />}
+                        iconBgClass="bg-purple-50"
+                        title="Ver Historial (HS)"
+                        subtitle="Ver estado y detalles de reportes previos"
+                        href="/historial-hs"
+                    />
                 </View>
 
                 {/* Mi Brújula de Vida preview */}

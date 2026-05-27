@@ -12,6 +12,8 @@ interface Props {
         iconColor: string;
         iconBg: string;
         status: 'COMPLETO' | 'PENDIENTE';
+        filledCount: number;
+        totalCount: number;
     };
 }
 
@@ -40,7 +42,7 @@ function CardAreasBrujula({ area }: Props) {
             </View>
             {isPending ? (
                 <View className="flex-row items-center gap-2">
-                    <Text className="text-sm font-medium text-gray-400">{area.status}</Text>
+                    <Text className="text-sm font-medium text-gray-400">{area.filledCount}/{area.totalCount}</Text>
                     <View className="h-7 w-7 items-center justify-center rounded-full border-2 border-gray-300">
                         <Plus color="#9CA3AF" size={14} />
                     </View>
@@ -48,7 +50,7 @@ function CardAreasBrujula({ area }: Props) {
             ) : (
                 <View className="flex-row items-center gap-2">
                     <View className="rounded-lg bg-green-100 px-2 py-1">
-                        <Text className="text-xs font-bold text-green-600">{area.status}</Text>
+                        <Text className="text-xs font-bold text-green-600">{area.filledCount}/{area.totalCount}</Text>
                     </View>
                     <ChevronRight color="#D1D5DB" size={18} />
                 </View>

@@ -54,13 +54,19 @@ export default function Brujula() {
     }
   };
 
-  // Derive area completion status from the API goals tree
+  // Derive area completion status and progress from the API goals tree
   const areasWithStatus = AREAS.map((area) => {
     const apiCategory = goals?.categories.find((c) => c.id === area.id);
-    const hasGoals = apiCategory
-      ? apiCategory.subcategories.some((sub) => sub.goals.length > 0)
-      : area.status === 'COMPLETO';
-    return { ...area, status: hasGoals ? ('COMPLETO' as const) : ('PENDIENTE' as const) };
+    const totalCount = apiCategory?.subcategories.length ?? area.goals.length;
+    const filledCount = apiCategory
+      ? apiCategory.subcategories.filter((sub) => sub.goals.length > 0).length
+      : 0;
+    return {
+      ...area,
+      status: filledCount > 0 ? ('COMPLETO' as const) : ('PENDIENTE' as const),
+      filledCount,
+      totalCount,
+    };
   });
 
   const completedCount = areasWithStatus.filter((a) => a.status === 'COMPLETO').length;

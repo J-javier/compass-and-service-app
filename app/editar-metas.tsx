@@ -6,21 +6,31 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AREAS } from '@/constants/areas';
 import { useCompass } from '@/hooks/useCompass';
 
-const YEARS = [2025, 2026, 2027, 2028, 2029];
-
 export default function EditarMetas() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { areaId } = useLocalSearchParams<{ areaId: string }>();
-  const { goals, categories, loading, createGoal, updateGoal } = useCompass();
+  const { goals, categories, profile, loading, createGoal, updateGoal } = useCompass();
 
   const area = AREAS.find((a) => a.id === Number(areaId)) ?? AREAS[0];
   const IconComp = area.icon;
 
-  const [selectedYear, setSelectedYear] = useState(2025);
+  const startYear = goals?.start_year ?? profile?.start_year ?? new Date().getFullYear();
+  const years = goals?.years?.length
+    ? goals.years
+    : Array.from({ length: 5 }, (_, i) => startYear + i);
+
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   // values[year][localGoalIndex] = text
   const [values, setValues] = useState<Record<number, Record<number, string>>>({});
   const [saving, setSaving] = useState(false);
+
+  // Sync selectedYear once the API years load
+  useEffect(() => {
+    if (years.length > 0 && !years.includes(selectedYear)) {
+      setSelectedYear(years[0]);
+    }
+  }, [years]);
 
   // Find this area's data in the API goals tree
   const apiCategory = goals?.categories.find((c) => c.id === area.id);
@@ -31,7 +41,7 @@ export default function EditarMetas() {
   useEffect(() => {
     if (!apiCategory) return;
     const initialValues: Record<number, Record<number, string>> = {};
-    YEARS.forEach((year) => {
+    years.forEach((year) => {
       initialValues[year] = {};
       apiCategory.subcategories.forEach((sub, idx) => {
         const existingGoal = sub.goals.find((g) => g.year === year);
@@ -43,7 +53,12 @@ export default function EditarMetas() {
     setValues(initialValues);
   }, [goals]);
 
-  const goalTemplates = area.goalsByYear[selectedYear] ?? [];
+  const subcategories = apiCategoryDef?.subcategories ?? area.goals;
+  const goalTemplates = subcategories.map((sub, idx) => ({
+    id: sub.id,
+    name: sub.name,
+    placeholder: area.goals[idx]?.placeholder ?? 'Escribe tu meta para este enfoque...',
+  }));
 
   const getValue = (goalIndex: number) => values[selectedYear]?.[goalIndex] ?? '';
 
@@ -133,7 +148,7 @@ export default function EditarMetas() {
 
           {/* Year selector */}
           <View className="flex-row bg-gray-200 rounded-2xl p-1 mb-6">
-            {YEARS.map((year) => (
+            {years.map((year) => (
               <Pressable
                 key={year}
                 className={`flex-1 py-2 rounded-xl items-center active:opacity-70 ${selectedYear === year ? 'bg-white' : ''}`}

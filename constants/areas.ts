@@ -1,9 +1,6 @@
 import { Sparkles, Users, GraduationCap, Briefcase, Dumbbell } from 'lucide-react-native';
 import React from 'react';
 
-type GoalsByYear = Record<number, { id: number; name: string; placeholder: string }[]>;
-type InitialValues = Record<number, Record<number, string>>;
-
 export interface Area {
     id: number;
     name: string;
@@ -13,9 +10,7 @@ export interface Area {
     iconBg: string;
     accentColor: string;
     subtitleColor: string;
-    status: 'COMPLETO' | 'PENDIENTE';
-    goalsByYear: GoalsByYear;
-    initialValues: InitialValues;
+    goals: { id: number; name: string; placeholder: string }[];
 }
 
 const ESPIRITUAL_GOALS = [
@@ -44,13 +39,6 @@ const SALUD_GOALS = [
     { id: 2, name: 'Hobbies', placeholder: 'Escribe tu meta para este enfoque...' },
 ];
 
-const allYears = (goals: { id: number; name: string; placeholder: string }[]): GoalsByYear => ({
-    2025: goals,
-    2026: goals,
-    2027: goals,
-    2028: goals,
-    2029: goals,
-});
 
 export const AREAS: Area[] = [
     {
@@ -62,14 +50,8 @@ export const AREAS: Area[] = [
         iconBg: '#EDE9FE',
         accentColor: '#7C3AED',
         subtitleColor: '#E9D5FF',
-        status: 'COMPLETO',
-        goalsByYear: allYears(ESPIRITUAL_GOALS),
-        initialValues: {
-            2025: {
-                1: 'Yo estudio las escrituras 15 minutos al día para fortalecer mi fe.',
-                2: 'Yo cumplo con mis llamamientos al bendecir la vida de otros a través del servicio constante.',
-            },
-        },
+
+        goals: ESPIRITUAL_GOALS,
     },
     {
         id: 2,
@@ -80,14 +62,8 @@ export const AREAS: Area[] = [
         iconBg: '#FFF6DC',
         accentColor: '#D97706',
         subtitleColor: '#FDE68A',
-        status: 'COMPLETO',
-        goalsByYear: allYears(FAMILIAR_GOALS),
-        initialValues: {
-            2025: {
-                1: 'Yo dedico tiempo de calidad con mi esposa cada semana para fortalecer nuestra relación.',
-                2: 'Yo leo con mis hijos 10 minutos cada noche para fomentar el amor por el aprendizaje.',
-            },
-        },
+
+        goals: FAMILIAR_GOALS,
     },
     {
         id: 3,
@@ -98,14 +74,8 @@ export const AREAS: Area[] = [
         iconBg: '#DCEED8',
         accentColor: '#059669',
         subtitleColor: '#A7F3D0',
-        status: 'COMPLETO',
-        goalsByYear: allYears(INTELECTUAL_GOALS),
-        initialValues: {
-            2025: {
-                1: 'Yo completo al menos un curso de desarrollo profesional en línea cada trimestre.',
-                2: 'Yo leo un libro relacionado con mi área de trabajo cada mes.',
-            },
-        },
+
+        goals: INTELECTUAL_GOALS,
     },
     {
         id: 4,
@@ -116,9 +86,8 @@ export const AREAS: Area[] = [
         iconBg: '#DBEAFE',
         accentColor: '#2563EB',
         subtitleColor: '#BFDBFE',
-        status: 'PENDIENTE',
-        goalsByYear: allYears(LABORAL_GOALS),
-        initialValues: {},
+
+        goals: LABORAL_GOALS,
     },
     {
         id: 5,
@@ -129,8 +98,7 @@ export const AREAS: Area[] = [
         iconBg: '#FEE2E2',
         accentColor: '#DC2626',
         subtitleColor: '#FECACA',
-        status: 'PENDIENTE',
-        goalsByYear: allYears(SALUD_GOALS),
-        initialValues: {},
+
+        goals: SALUD_GOALS,
     },
 ];

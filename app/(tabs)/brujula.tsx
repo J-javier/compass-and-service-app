@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View, Pressable, TextInput } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, Text, View, Pressable, TextInput } from 'react-native';
 import { Sparkles, Printer, PenLine, Info } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CardAreasBrujula from '@/components/CardAreasBrujula';
@@ -11,7 +11,7 @@ import { useCompass } from '@/hooks/useCompass';
 export default function Brujula() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { profile, goals, loading, updateProfile } = useCompass();
+  const { profile, goals, loading, updateProfile, createProfile } = useCompass();
 
   const [isEditingVision, setIsEditingVision] = useState(false);
   const [vision, setVision] = useState('');
@@ -44,13 +44,18 @@ export default function Brujula() {
     }
     setSaving(true);
     try {
-      await updateProfile({ vision: trimmed });
+      if (profile) {
+        await updateProfile({ vision: trimmed });
+      } else {
+        await createProfile({ start_year: new Date().getFullYear(), vision: trimmed });
+      }
       setVision(trimmed);
-    } catch {
-      // keep previous vision on error
+      setIsEditingVision(false);
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail ?? 'No se pudo guardar la visión. Intenta de nuevo.';
+      Alert.alert('Error', typeof msg === 'string' ? msg : 'No se pudo guardar la visión.');
     } finally {
       setSaving(false);
-      setIsEditingVision(false);
     }
   };
 

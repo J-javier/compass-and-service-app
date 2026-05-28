@@ -72,6 +72,11 @@ export function useCompass() {
     setGoals(goalsRes.data);
   }, []);
 
+  const refetchGoals = useCallback(async () => {
+    const goalsRes = await api.get<GoalsTreeResponse>('/compass/goals');
+    setGoals(goalsRes.data);
+  }, []);
+
   const exportCompass = useCallback(async () => {
     const res = await api.get('/compass/export', { responseType: 'blob' });
     return res.data;
@@ -84,6 +89,7 @@ export function useCompass() {
     loading,
     error,
     refetch,
+    refetchGoals,
     createProfile,
     updateProfile,
     createGoal,

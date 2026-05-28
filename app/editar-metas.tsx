@@ -1,24 +1,24 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Lightbulb, Save } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AREAS } from '@/constants/areas';
 import { useCompass } from '@/hooks/useCompass';
+import api from '@/services/api';
+import CardGoals from '@/components/CardGoals';
 
 export default function EditarMetas() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { areaId } = useLocalSearchParams<{ areaId: string }>();
-  const { goals, categories, profile, loading, createGoal, updateGoal } = useCompass();
+  const { goals, categories, profile, loading, refetchGoals } = useCompass();
 
   const area = AREAS.find((a) => a.id === Number(areaId)) ?? AREAS[0];
   const IconComp = area.icon;
 
   const startYear = goals?.start_year ?? profile?.start_year ?? new Date().getFullYear();
-  const years = goals?.years?.length
-    ? goals.years
-    : Array.from({ length: 5 }, (_, i) => startYear + i);
+  const years = Array.from({ length: 5 }, (_, i) => startYear + i);
 
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   // values[year][localGoalIndex] = text
@@ -76,23 +76,23 @@ export default function EditarMetas() {
     }
     setSaving(true);
     try {
-      const ops = goalTemplates.map(async (goal, idx) => {
+      for (let idx = 0; idx < goalTemplates.length; idx++) {
         const localIndex = idx + 1;
         const text = (values[selectedYear]?.[localIndex] ?? '').trim();
-        if (!text) return;
+        if (!text) continue;
 
-        const sub = apiCategory.subcategories[idx];
+        const sub = apiCategory.subcategories.find((s) => s.id === goalTemplates[idx].id);
         const existingGoal = sub?.goals.find((g) => g.year === selectedYear);
 
         if (existingGoal) {
           if (existingGoal.goal !== text) {
-            await updateGoal(existingGoal.id, { goal: text });
+            await api.put(`/compass/goals/${existingGoal.id}`, { goal: text });
           }
-        } else if (sub) {
-          await createGoal({ subcategory_id: sub.id, year: selectedYear, goal: text });
+        } else {
+          await api.post('/compass/goals', { subcategory_id: goalTemplates[idx].id, year: selectedYear, goal: text });
         }
-      });
-      await Promise.all(ops);
+      }
+      await refetchGoals();
       Alert.alert('Éxito', 'Metas guardadas correctamente');
     } catch (e: any) {
       const msg = e?.response?.data?.detail ?? 'Error al guardar metas';
@@ -167,37 +167,15 @@ export default function EditarMetas() {
           <View className="gap-4 mb-5">
             {goalTemplates.map((goal, idx) => {
               const localIndex = idx + 1;
-              const val = getValue(localIndex);
               return (
-                <View
+                <CardGoals
                   key={goal.id}
-                  className="bg-white rounded-2xl overflow-hidden"
-                  style={{ shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }}
-                >
-                  <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
-                    <View className="flex-row items-center gap-2">
-                      <View className="w-1 h-5 rounded-full" style={{ backgroundColor: area.accentColor }} />
-                      <Text className="text-base font-bold text-gray-800">{goal.name}</Text>
-                    </View>
-                    <Text className="text-xs text-gray-400 font-semibold uppercase tracking-wide">
-                      Meta {selectedYear}
-                    </Text>
-                  </View>
-                  <View className="px-4 pb-3">
-                    <TextInput
-                      className="text-gray-700 text-sm leading-6"
-                      value={val}
-                      onChangeText={(t) => setValue(localIndex, t)}
-                      placeholder={goal.placeholder}
-                      placeholderTextColor="#9CA3AF"
-                      multiline
-                      maxLength={200}
-                      textAlignVertical="top"
-                      style={{ minHeight: 80 }}
-                    />
-                    <Text className="text-xs text-gray-300 text-right mt-1">{val.length}/200</Text>
-                  </View>
-                </View>
+                  goal={goal}
+                  value={getValue(localIndex)}
+                  onChangeText={(t) => setValue(localIndex, t)}
+                  areaAccentColor={area.accentColor}
+                  selectedYear={selectedYear}
+                />
               );
             })}
           </View>

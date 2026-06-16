@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL, TOKEN_STORAGE_KEY } from '@/constants/config';
 import api from '@/services/api';
 import {
   CompassProfileCreate,
@@ -92,23 +90,25 @@ export function useCompass() {
   }, []);
 
   const exportCompass = useCallback(async () => {
-    const token = await AsyncStorage.getItem(TOKEN_STORAGE_KEY);
+    const res = await api.get('/compass/export', {
+      responseType: 'arraybuffer',
+      timeout: 30000,
+    });
+
     const localUri = FileSystem.cacheDirectory + 'brujula.pdf';
-    const result = await FileSystem.downloadAsync(
-      `${API_BASE_URL}/api/v1/compass/export`,
-      localUri,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    if (result.status !== 200) {
-      const errorBody = await FileSystem.readAsStringAsync(result.uri).catch(() => '');
-      let detail = `Error ${result.status}`;
-      try {
-        const parsed = JSON.parse(errorBody);
-        detail = parsed?.detail ?? parsed?.message ?? detail;
-      } catch {}
-      throw new Error(detail);
+
+    const bytes = new Uint8Array(res.data as ArrayBuffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
     }
-    await Sharing.shareAsync(result.uri, {
+    const base64 = btoa(binary);
+
+    await FileSystem.writeAsStringAsync(localUri, base64, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    await Sharing.shareAsync(localUri, {
       mimeType: 'application/pdf',
       dialogTitle: 'Compartir Brújula de Vida',
     });

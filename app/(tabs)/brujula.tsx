@@ -190,8 +190,9 @@ export default function Brujula() {
               setExporting(true);
               try {
                 await exportCompass();
-              } catch {
-                Alert.alert('Error', 'No se pudo exportar la brújula. Intenta de nuevo.');
+              } catch (e: any) {
+                const msg = e?.message ?? 'No se pudo exportar la brújula. Intenta de nuevo.';
+                Alert.alert('Error', msg);
               } finally {
                 setExporting(false);
               }

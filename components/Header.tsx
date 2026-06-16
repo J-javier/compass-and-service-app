@@ -18,7 +18,7 @@ function Header({ user }: Props) {
                 <View className="w-16 h-16 rounded-2xl bg-[#002d4e] items-center justify-center">
                     <Text className="text-white text-xl font-bold">{user.initials}</Text>
                 </View>
-                <View className="flex-1">
+                <View className="flex-1 border border-white border-solid">
                     <Text className="text-xl font-bold text-gray-900">{user.name}</Text>
                     <Text className="text-sm text-gray-500 mb-1">{user.role}</Text>
                     <View className="flex-row items-center gap-1">

@@ -100,8 +100,8 @@ export default function Servicio() {
         </View>
 
         {/* Mi Brújula de Vida preview */}
-        <Text className="text-base font-bold text-gray-800 mb-3">Mi Brújula de Vida</Text>
-        <View
+        {/* <Text className="text-base font-bold text-gray-800 mb-3">Mi Brújula de Vida</Text> */}
+       {/*  <View
           className="bg-white rounded-2xl p-4 flex-row gap-4"
           style={{ shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }}
         >
@@ -120,7 +120,8 @@ export default function Servicio() {
           >
             <Text className="text-blue-500 font-medium text-sm">Ver todo</Text>
           </Pressable>
-        </View>
+        </View> */}
+
       </ScrollView>
     </View>
   );

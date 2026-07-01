@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import api from '@/services/api';
 import {
   CompassProfileCreate,
@@ -22,16 +24,24 @@ export function useCompass() {
     setLoading(true);
     setError(null);
     try {
-      const [profileRes, goalsRes, catsRes] = await Promise.all([
+      const [profileResult, goalsResult, catsResult] = await Promise.allSettled([
         api.get<CompassProfileWithProgressResponse>('/compass/profile'),
         api.get<GoalsTreeResponse>('/compass/goals'),
         api.get<GoalCategoryResponse[]>('/compass/categories'),
       ]);
-      setProfile(profileRes.data);
-      setGoals(goalsRes.data);
-      setCategories(catsRes.data);
-    } catch (e: any) {
-      setError(e?.response?.data?.detail ?? 'Error al cargar brújula');
+
+      if (profileResult.status === 'fulfilled') {
+        setProfile(profileResult.value.data);
+      }
+      // 404 en profile = usuario nuevo sin perfil, estado válido → no setError
+
+      if (goalsResult.status === 'fulfilled') {
+        setGoals(goalsResult.value.data);
+      }
+
+      if (catsResult.status === 'fulfilled') {
+        setCategories(catsResult.value.data);
+      }
     } finally {
       setLoading(false);
     }
@@ -73,13 +83,35 @@ export function useCompass() {
   }, []);
 
   const refetchGoals = useCallback(async () => {
-    const goalsRes = await api.get<GoalsTreeResponse>('/compass/goals');
-    setGoals(goalsRes.data);
+    try {
+      const goalsRes = await api.get<GoalsTreeResponse>('/compass/goals');
+      setGoals(goalsRes.data);
+    } catch {}
   }, []);
 
   const exportCompass = useCallback(async () => {
-    const res = await api.get('/compass/export', { responseType: 'blob' });
-    return res.data;
+    const res = await api.get('/compass/export', {
+      responseType: 'arraybuffer',
+      timeout: 30000,
+    });
+
+    const localUri = FileSystem.cacheDirectory + 'brujula.pdf';
+
+    const bytes = new Uint8Array(res.data as ArrayBuffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64 = btoa(binary);
+
+    await FileSystem.writeAsStringAsync(localUri, base64, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    await Sharing.shareAsync(localUri, {
+      mimeType: 'application/pdf',
+      dialogTitle: 'Compartir Brújula de Vida',
+    });
   }, []);
 
   return {

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, View, Pressable, TextInput } from 'react-native';
 import { Sparkles, Printer, PenLine, Info } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CardAreasBrujula from '@/components/CardAreasBrujula';
 import Header from '@/components/Header';
@@ -11,7 +12,14 @@ import { useCompass } from '@/hooks/useCompass';
 export default function Brujula() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { profile, goals, loading, updateProfile, createProfile } = useCompass();
+  const { profile, goals, loading, updateProfile, createProfile, refetchGoals, exportCompass } = useCompass();
+  const [exporting, setExporting] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchGoals();
+    }, [refetchGoals])
+  );
 
   const [isEditingVision, setIsEditingVision] = useState(false);
   const [vision, setVision] = useState('');
@@ -62,13 +70,15 @@ export default function Brujula() {
   // Derive area completion status and progress from the API goals tree
   const areasWithStatus = AREAS.map((area) => {
     const apiCategory = goals?.categories.find((c) => c.id === area.id);
-    const totalCount = apiCategory?.subcategories.length ?? area.goals.length;
+    const yearsCount = goals?.years.length ?? 5;
+    const subCount = apiCategory?.subcategories.length ?? area.goals.length;
+    const totalCount = subCount * yearsCount;
     const filledCount = apiCategory
-      ? apiCategory.subcategories.filter((sub) => sub.goals.length > 0).length
+      ? apiCategory.subcategories.reduce((sum, sub) => sum + sub.goals.length, 0)
       : 0;
     return {
       ...area,
-      status: filledCount > 0 ? ('COMPLETO' as const) : ('PENDIENTE' as const),
+      status: filledCount === totalCount ? ('COMPLETO' as const) : ('PENDIENTE' as const),
       filledCount,
       totalCount,
     };
@@ -152,7 +162,14 @@ export default function Brujula() {
           {/* Áreas de la Brújula */}
           <View className="gap-3 mb-5">
             {areasWithStatus.map((area) => (
-              <CardAreasBrujula key={area.id} area={area} />
+              <CardAreasBrujula
+                key={area.id}
+                area={area}
+                onPress={!profile ? () => Alert.alert(
+                  'Perfil requerido',
+                  'Primero guarda tu visión personal para poder editar las metas.'
+                ) : undefined}
+              />
             ))}
           </View>
 
@@ -167,12 +184,27 @@ export default function Brujula() {
           )}
 
           <Pressable
-            className={`flex-row items-center justify-center gap-3 p-4 rounded-2xl ${allComplete ? 'bg-[#002d4e] active:opacity-70' : 'bg-gray-200'}`}
-            disabled={!allComplete}
+            className={`flex-row items-center justify-center gap-3 p-4 rounded-2xl ${allComplete && !exporting ? 'bg-[#002d4e] active:opacity-70' : 'bg-gray-200'}`}
+            disabled={!allComplete || exporting}
+            onPress={async () => {
+              setExporting(true);
+              try {
+                await exportCompass();
+              } catch (e: any) {
+                const msg = e?.message ?? 'No se pudo exportar la brújula. Intenta de nuevo.';
+                Alert.alert('Error', msg);
+              } finally {
+                setExporting(false);
+              }
+            }}
           >
-            <Printer color={allComplete ? '#fff' : '#9CA3AF'} size={20} />
-            <Text className={`font-semibold text-base ${allComplete ? 'text-white' : 'text-gray-400'}`}>
-              Imprimir Brújula
+            {exporting ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Printer color={allComplete ? '#fff' : '#9CA3AF'} size={20} />
+            )}
+            <Text className={`font-semibold text-base ${allComplete && !exporting ? 'text-white' : 'text-gray-400'}`}>
+              {exporting ? 'Exportando...' : 'Imprimir Brújula'}
             </Text>
           </Pressable>
         </ScrollView>

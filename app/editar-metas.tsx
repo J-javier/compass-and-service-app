@@ -81,7 +81,7 @@ export default function EditarMetas() {
         const text = (values[selectedYear]?.[localIndex] ?? '').trim();
         if (!text) continue;
 
-        const sub = apiCategory.subcategories.find((s) => s.id === goalTemplates[idx].id);
+        const sub = apiCategory?.subcategories.find((s) => s.id === goalTemplates[idx].id);
         const existingGoal = sub?.goals.find((g) => g.year === selectedYear);
 
         if (existingGoal) {

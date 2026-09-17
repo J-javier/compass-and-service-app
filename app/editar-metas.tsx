@@ -70,8 +70,8 @@ export default function EditarMetas() {
   };
 
   const handleSave = async () => {
-    if (!apiCategoryDef) {
-      Alert.alert('Error', 'No se pudo cargar la información de esta área');
+    if (!apiCategoryDef || !apiCategory) {
+      Alert.alert('Error', 'Debe asegurarse de completar su visión primero');
       return;
     }
     setSaving(true);

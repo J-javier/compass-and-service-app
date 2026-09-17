@@ -1,9 +1,19 @@
+import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
 import { ChevronLeft, SlidersHorizontal, CircleCheck, Clock, XCircle, Plus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useReports } from '@/hooks/useReports';
+import SelectModal from '@/components/SelectModal';
 import { ReportResponse, ReportStatus } from '@/types/api';
+
+const STATUS_OPTIONS: { value: ReportStatus | null; label: string }[] = [
+  { value: null, label: 'Todas' },
+  { value: 'PENDING', label: 'Pendiente' },
+  { value: 'APPROVED_FULL', label: 'Aprobada (total)' },
+  { value: 'APPROVED_PARTIAL', label: 'Aprobada (parcial)' },
+  { value: 'REJECTED', label: 'Rechazada' },
+];
 
 function statusLabel(status: ReportStatus): string {
   switch (status) {
@@ -70,7 +80,8 @@ function ActivityItem({ item }: { item: ReportResponse }) {
 export default function HistorialHS() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { data: reports, loading, error } = useReports();
+  const { data: reports, loading, loadingMore, error, status, loadMore, setStatusFilter } = useReports();
+  const [statusPickerOpen, setStatusPickerOpen] = useState(false);
 
   const totalHours = reports.reduce((sum, r) => sum + r.hours_spent, 0);
   const approvedHours = reports
@@ -91,10 +102,22 @@ export default function HistorialHS() {
           <ChevronLeft color="#002d4e" size={24} />
         </Pressable>
         <Text className="flex-1 text-center text-lg font-bold text-gray-900">Historial de Horas</Text>
-        <Pressable className="w-9 h-9 items-center justify-center rounded-full active:bg-gray-100">
+        <Pressable
+          className="w-9 h-9 items-center justify-center rounded-full active:bg-gray-100"
+          onPress={() => setStatusPickerOpen(true)}
+        >
           <SlidersHorizontal color="#374151" size={20} />
         </Pressable>
       </View>
+
+      <SelectModal
+        visible={statusPickerOpen}
+        title="Filtrar por estado"
+        options={STATUS_OPTIONS}
+        selectedValue={status}
+        onSelect={setStatusFilter}
+        onClose={() => setStatusPickerOpen(false)}
+      />
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
@@ -148,6 +171,9 @@ export default function HistorialHS() {
           }
           ItemSeparatorComponent={() => <View className="h-3" />}
           renderItem={({ item }) => <ActivityItem item={item} />}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={loadingMore ? <ActivityIndicator className="my-4" color="#002d4e" /> : null}
         />
       )}
 

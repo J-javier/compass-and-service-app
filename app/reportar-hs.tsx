@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Calendar, Clock, FileText, Camera } from 'lucide-react-native';
+import { ChevronLeft, ChevronDown, Clock, FileText, Camera, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as DocumentPicker from 'expo-document-picker';
 import { useReports } from '@/hooks/useReports';
 import { useCategories } from '@/hooks/useCategories';
+import SelectModal from '@/components/SelectModal';
 
 export default function ReportarHS() {
   const router = useRouter();
@@ -12,11 +14,36 @@ export default function ReportarHS() {
   const { createReport } = useReports();
   const { data: categories } = useCategories();
 
-  const [date, setDate] = useState('');
   const [hours, setHours] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
+  const [evidence, setEvidence] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+
+  const selectedCategory = categories.find((cat) => cat.id === categoryId);
+
+  const handlePickEvidence = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      // Android document providers unreliably filter by MIME type, so fall
+      // back to checking the file extension as well.
+      const looksLikePdf =
+        asset.mimeType === 'application/pdf' || asset.name.toLowerCase().endsWith('.pdf');
+      if (!looksLikePdf) {
+        Alert.alert('Archivo inválido', 'Debes seleccionar un archivo PDF');
+        return;
+      }
+      setEvidence(asset);
+    } catch {
+      Alert.alert('Error', 'No se pudo seleccionar el archivo');
+    }
+  };
 
   const handleSubmit = async () => {
     if (!hours.trim() || !description.trim()) {
@@ -32,19 +59,25 @@ export default function ReportarHS() {
       Alert.alert('Error', 'Selecciona una categoría');
       return;
     }
+    if (!evidence) {
+      Alert.alert('Error', 'Debes adjuntar un archivo PDF como evidencia');
+      return;
+    }
 
     setSubmitting(true);
     try {
-      // Build multipart/form-data — evidence file is optional in this UI flow
       const formData = new FormData();
       formData.append('hours_spent', String(parsedHours));
       formData.append('category_id', String(categoryId));
       formData.append('description', description.trim());
-      // evidence is required by the API; attach a placeholder or skip until
-      // a document picker is integrated
-      // formData.append('evidence', { uri, name, type } as any);
+      formData.append('evidence', {
+        uri: evidence.uri,
+        name: evidence.name,
+        type: evidence.mimeType ?? 'application/pdf',
+      } as any);
 
       await createReport(formData);
+      setEvidence(null);
       Alert.alert('Éxito', 'Reporte enviado correctamente', [
         { text: 'OK', onPress: () => router.back() },
       ]);
@@ -103,38 +136,26 @@ export default function ReportarHS() {
             <Text className="text-xs text-[#002d4e] font-semibold uppercase tracking-wide mb-2">
               Categoría
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-5">
-              <View className="flex-row gap-2">
-                {categories.map((cat) => (
-                  <Pressable
-                    key={cat.id}
-                    onPress={() => setCategoryId(cat.id)}
-                    className={`px-4 py-2 rounded-full border ${categoryId === cat.id ? 'bg-[#002d4e] border-[#002d4e]' : 'bg-white border-gray-200'}`}
-                  >
-                    <Text className={`text-sm font-medium ${categoryId === cat.id ? 'text-white' : 'text-gray-600'}`}>
-                      {cat.name}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </ScrollView>
+            <Pressable
+              className="flex-row items-center justify-between bg-white border border-gray-200 rounded-2xl px-4 mb-5 h-14"
+              onPress={() => setCategoryPickerOpen(true)}
+            >
+              <Text className={`text-base ${selectedCategory ? 'text-gray-700' : 'text-gray-400'}`}>
+                {selectedCategory ? selectedCategory.name : 'Selecciona una categoría'}
+              </Text>
+              <ChevronDown color="#9CA3AF" size={20} />
+            </Pressable>
+
+            <SelectModal
+              visible={categoryPickerOpen}
+              title="Categoría"
+              options={categories.map((cat) => ({ value: cat.id, label: cat.name }))}
+              selectedValue={categoryId}
+              onSelect={setCategoryId}
+              onClose={() => setCategoryPickerOpen(false)}
+            />
           </>
         )}
-
-        {/* Date field */}
-        <Text className="text-xs text-[#002d4e] font-semibold uppercase tracking-wide mb-2">
-          Fecha del Servicio
-        </Text>
-        <View className="flex-row items-center bg-white border border-gray-200 rounded-2xl px-4 mb-5 h-14">
-          <Calendar color="#9CA3AF" size={20} />
-          <TextInput
-            className="flex-1 ml-3 text-gray-700 text-base"
-            value={date}
-            onChangeText={setDate}
-            placeholder="DD/MM/AAAA"
-            placeholderTextColor="#9CA3AF"
-          />
-        </View>
 
         {/* Hours field */}
         <Text className="text-xs text-[#002d4e] font-semibold uppercase tracking-wide mb-2">
@@ -171,13 +192,30 @@ export default function ReportarHS() {
           />
         </View>
 
-        {/* Evidence upload placeholder */}
-        <Pressable className="border-2 border-dashed border-gray-300 rounded-2xl py-8 items-center justify-center mb-8 active:opacity-70">
-          <Camera color="#9CA3AF" size={32} />
-          <Text className="text-gray-400 text-xs font-semibold uppercase tracking-widest mt-3">
-            Subir Evidencia (PDF)
-          </Text>
-        </Pressable>
+        {/* Evidence upload */}
+        {evidence ? (
+          <View className="flex-row items-center justify-between border border-gray-200 rounded-2xl px-4 py-4 mb-8 bg-white">
+            <View className="flex-row items-center gap-3 flex-1">
+              <FileText color="#002d4e" size={20} />
+              <Text className="text-gray-700 text-sm flex-1" numberOfLines={1}>
+                {evidence.name}
+              </Text>
+            </View>
+            <Pressable onPress={() => setEvidence(null)} className="p-1 active:opacity-70">
+              <X color="#9CA3AF" size={18} />
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            className="border-2 border-dashed border-gray-300 rounded-2xl py-8 items-center justify-center mb-8 active:opacity-70"
+            onPress={handlePickEvidence}
+          >
+            <Camera color="#9CA3AF" size={32} />
+            <Text className="text-gray-400 text-xs font-semibold uppercase tracking-widest mt-3">
+              Subir Evidencia (PDF)
+            </Text>
+          </Pressable>
+        )}
 
         {/* Submit button */}
         <Pressable
@@ -195,7 +233,7 @@ export default function ReportarHS() {
         </Pressable>
 
         <Text className="text-center text-xs text-gray-400 tracking-widest uppercase">
-          Brújula de Vida • Funval Internacional
+          Horas de Servicio • Funval Internacional
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>

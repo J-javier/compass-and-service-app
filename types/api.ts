@@ -2,14 +2,32 @@
 export type UserRole = 'ADMIN' | 'STUDENT';
 export type ReportStatus = 'PENDING' | 'APPROVED_FULL' | 'APPROVED_PARTIAL' | 'REJECTED';
 
-// Auth
-export interface LoginRequest {
-  email: string;
-  password: string;
+// Auth (SIGEF OIDC)
+export interface SigefTokens {
+  accessToken: string;
+  refreshToken: string | null;
+  idToken?: string;
+  expiresIn?: number;
 }
-export interface TokenResponse {
-  access_token: string;
-  token_type: string;
+export interface SigefStudentProfile {
+  sub: string;
+  name: string;
+  email: string;
+  photo_url: string | null;
+  enrollment: {
+    status: { id: number; name: string };
+    term: string;
+    course: { id: number; name: string };
+  } | null;
+}
+export interface AuthUser {
+  sub: string;
+  email: string;
+  full_name: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  photo_url: string | null;
 }
 
 // User / Profile

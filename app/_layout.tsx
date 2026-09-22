@@ -2,8 +2,11 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import '../global.css';
+
+WebBrowser.maybeCompleteAuthSession();
 
 function NavigationGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -13,10 +16,11 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading) return;
     const inTabs = segments[0] === '(tabs)';
-    const inLogin = segments.length === 0 || segments[0] === 'index';
     if (!user && inTabs) {
       router.replace('/');
-    } else if (user && inLogin) {
+    } else if (user && !inTabs) {
+      // Covers the login screen and app/oauth/callback.tsx (the OAuth
+      // redirect's transitional landing screen) alike.
       router.replace('/(tabs)/home');
     }
   }, [user, isLoading, segments]);
@@ -43,6 +47,7 @@ export default function RootLayout() {
             <Stack.Screen name="reportar-hs" />
             <Stack.Screen name="historial-hs" />
             <Stack.Screen name="editar-metas" />
+            <Stack.Screen name="oauth/callback" />
           </Stack>
         </NavigationGuard>
       </AuthProvider>

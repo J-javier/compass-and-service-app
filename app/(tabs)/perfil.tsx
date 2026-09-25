@@ -1,4 +1,6 @@
+import { useCallback } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   CalendarDays,
@@ -10,12 +12,8 @@ import {
   CircleUserRound,
 } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
-import { useDashboard, DashboardStats } from '@/hooks/useDashboard';
-import { StudentDashboardStats } from '@/types/api';
-
-function isStudentStats(stats: DashboardStats): stats is StudentDashboardStats {
-  return 'reports' in stats && 'course_progress' in stats;
-}
+import { useCompass } from '@/hooks/useCompass';
+import { useReports } from '@/hooks/useReports';
 
 const MENU_ITEMS = [
   { id: 1, label: 'Editar Perfil', icon: CircleUserRound, color: '#3B82F6' },
@@ -27,18 +25,22 @@ const MENU_ITEMS = [
 export default function Perfil() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
-  const { data: stats, loading } = useDashboard();
+  const { progress: hsProgress, loading: hsLoading, refetch: refetchReports } = useReports({ autoload: false });
+  const { plan, progress: compassProgress, loading: compassLoading, refetch: refetchCompass } = useCompass({ autoload: false });
+  // Spinner only on first load; focus refetches update values in place
+  const loading = (hsLoading || compassLoading) && !plan && hsProgress.approved_hours == null;
 
-  const studentStats = stats && isStudentStats(stats) ? stats : null;
-  const hoursApproved = studentStats?.reports.total_hours_approved ?? 0;
-  const approvalRate = studentStats?.reports.approval_rate ?? 0;
-  const compassProgress = studentStats?.course_progress;
+  useFocusEffect(useCallback(() => {
+    refetchReports();
+    refetchCompass();
+  }, [refetchReports, refetchCompass]));
+
+  const hoursApproved = hsProgress.approved_hours ?? 0;
 
   const initials = user
     ? `${user.first_name[0] ?? ''}${user.last_name[0] ?? ''}`.toUpperCase()
     : '?';
-  const startYear = compassProgress ? new Date().getFullYear() : 2025;
-  const planLabel = `${startYear} - ${startYear + 4}`;
+  const planLabel = plan ? `${plan.start_year} - ${plan.start_year + 4}` : 'sin configurar';
 
   return (
     <View className="flex-1 bg-gray-50" style={{ paddingTop: insets.top }}>
@@ -84,20 +86,11 @@ export default function Perfil() {
               style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}
             >
               <Text className="text-2xl font-bold text-green-500">
-                {compassProgress
-                  ? `${Math.round(compassProgress.progress_percentage)}%`
+                {plan && compassProgress.total_possible_slots > 0
+                  ? `${Math.round((compassProgress.filled_slots / compassProgress.total_possible_slots) * 100)}%`
                   : '—'}
               </Text>
-              <Text className="text-xs text-gray-400 mt-1 text-center">Progreso Curso</Text>
-            </View>
-            <View
-              className="flex-1 bg-white rounded-2xl p-4 items-center"
-              style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}
-            >
-              <Text className="text-2xl font-bold text-blue-500">
-                {Math.round(approvalRate * 100)}%
-              </Text>
-              <Text className="text-xs text-gray-400 mt-1 text-center">Aprobación</Text>
+              <Text className="text-xs text-gray-400 mt-1 text-center">Progreso Brújula</Text>
             </View>
           </View>
         )}

@@ -15,12 +15,14 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isLoading) return;
-    const inTabs = segments[0] === '(tabs)';
-    if (!user && inTabs) {
+    // Public screens: the login (index, no segment) and app/oauth/callback.tsx
+    // (the OAuth redirect's transitional landing screen). Everything else —
+    // tabs and stack screens like reportar-hs — requires a session.
+    const first = segments[0] as string | undefined;
+    const onPublicScreen = first === undefined || first === 'index' || first === 'oauth';
+    if (!user && !onPublicScreen) {
       router.replace('/');
-    } else if (user && !inTabs) {
-      // Covers the login screen and app/oauth/callback.tsx (the OAuth
-      // redirect's transitional landing screen) alike.
+    } else if (user && onPublicScreen) {
       router.replace('/(tabs)/home');
     }
   }, [user, isLoading, segments]);
@@ -47,6 +49,7 @@ export default function RootLayout() {
             <Stack.Screen name="reportar-hs" />
             <Stack.Screen name="historial-hs" />
             <Stack.Screen name="editar-metas" />
+            <Stack.Screen name="configurar-plan" />
             <Stack.Screen name="oauth/callback" />
           </Stack>
         </NavigationGuard>

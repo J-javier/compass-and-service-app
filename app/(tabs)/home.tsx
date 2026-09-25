@@ -1,27 +1,28 @@
+import { useCallback } from 'react';
 import { ActivityIndicator, Text, View, ScrollView } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import Avatar from '@/components/Avatar';
 import FrameArea from '@/components/FrameArea';
 import { Compass, Clock, Lightbulb } from 'lucide-react-native';
 import CardOption from '@/components/CardOption';
+import ProgressBar from '@/components/ProgressBar';
 import { useAuth } from '@/context/AuthContext';
-import { useDashboard, DashboardStats } from '@/hooks/useDashboard';
-import { StudentDashboardStats } from '@/types/api';
-
-function isStudentStats(stats: DashboardStats): stats is StudentDashboardStats {
-  return 'reports' in stats && 'course_progress' in stats;
-}
+import { useReports } from '@/hooks/useReports';
 
 export default function Home() {
   const img = require('../../assets/Avatar-profile.png');
   const { user } = useAuth();
-  const { data: stats, loading } = useDashboard();
+  const { progress, loading, refetch } = useReports({ autoload: false });
+  useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
 
   const firstName = user?.first_name ?? 'Bienvenido';
 
-  const studentStats = stats && isStudentStats(stats) ? stats : null;
-  const hoursApproved = studentStats?.reports.total_hours_approved ?? 0;
-  const hoursRequired = studentStats?.course_progress?.required_service_hours ?? 0;
-  const progress = hoursRequired > 0 ? Math.min((hoursApproved / hoursRequired) * 100, 100) : 0;
+  const hoursApproved = progress.approved_hours ?? 0;
+  // null = the course has no hours goal configured — never show "x / 0"
+  const hoursRequired = progress.required_hours;
+  const percent = hoursRequired != null && hoursRequired > 0
+    ? Math.min((hoursApproved / hoursRequired) * 100, 100)
+    : hoursRequired === 0 ? 100 : 0;
 
   const options = [
     {
@@ -93,19 +94,12 @@ export default function Home() {
               <>
                 <Text className="text-2xl font-bold text-[#002d4e]">
                   {hoursApproved}{' '}
-                  {hoursRequired > 0 && (
+                  {hoursRequired != null && (
                     <Text className="text-sm font-normal text-gray-400">/ {hoursRequired}</Text>
                   )}
                 </Text>
                 <Text className="text-xs text-gray-400 mb-2">Horas Aprobadas</Text>
-                {hoursRequired > 0 && (
-                  <View className="h-1.5 bg-gray-200 rounded-full">
-                    <View
-                      className="h-1.5 bg-blue-500 rounded-full"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </View>
-                )}
+                {hoursRequired != null && <ProgressBar percent={percent} heightClass="h-1.5" />}
               </>
             )}
           </View>

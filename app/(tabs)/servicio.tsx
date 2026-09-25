@@ -1,34 +1,50 @@
-import { ActivityIndicator, ScrollView, Text, View, Pressable } from 'react-native';
-import { ClipboardCheck, History, Sparkles, GraduationCap } from 'lucide-react-native';
-import CardAccionRapida from '@/components/CardAccionRapida';
+import { useCallback } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ClipboardCheck, History } from 'lucide-react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import CardAccionRapida from '@/components/CardAccionRapida';
 import Header from '@/components/Header';
+import ProgressBar from '@/components/ProgressBar';
+import ReportItem from '@/components/ReportItem';
 import { useAuth } from '@/context/AuthContext';
-import { useDashboard, DashboardStats } from '@/hooks/useDashboard';
-import { StudentDashboardStats } from '@/types/api';
-import { useCompass } from '@/hooks/useCompass';
+import { useCategories } from '@/hooks/useCategories';
+import { useReports } from '@/hooks/useReports';
+import { REPORT_STATUS } from '@/lib/serviceReports';
 
-function isStudentStats(stats: DashboardStats): stats is StudentDashboardStats {
-  return 'reports' in stats && 'course_progress' in stats;
+function Pill({ dotClass, label }: { dotClass: string; label: string }) {
+  return (
+    <View className="flex-row items-center gap-2 bg-white/10 rounded-full px-3 py-1.5">
+      <View className={`w-2.5 h-2.5 rounded-full ${dotClass}`} />
+      <Text className="text-white text-xs font-medium">{label}</Text>
+    </View>
+  );
 }
 
 export default function Servicio() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
-  const { data: stats, loading: statsLoading } = useDashboard();
-  const { goals } = useCompass();
+  const { data: reports, progress, loading, error, refetch } = useReports({ autoload: false });
+  const { data: categories } = useCategories();
 
-  const studentStats = stats && isStudentStats(stats) ? stats : null;
-  const hoursCompleted = studentStats?.reports.total_hours_approved ?? 0;
-  const hoursGoal = studentStats?.course_progress?.required_service_hours ?? 0;
-  const progress = hoursGoal > 0 ? Math.round((hoursCompleted / hoursGoal) * 100) : 0;
+  useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
 
-  const initials = user
-    ? `${user.first_name[0] ?? ''}${user.last_name[0] ?? ''}`.toUpperCase()
-    : '?';
+  const approved = progress.approved_hours ?? 0;
+  const required = progress.required_hours; // null = no goal configured (≠ 0)
+  const remaining = progress.remaining_hours ?? (required != null ? Math.max(required - approved, 0) : null);
+  const percent = required != null && required > 0 ? Math.min((approved / required) * 100, 100) : required === 0 ? 100 : 0;
 
+  const pendingHours = reports
+    .filter((r) => r.status.id === REPORT_STATUS.PENDING)
+    .reduce((sum, r) => sum + r.hours_spent, 0);
+  const rejectedHours = reports
+    .filter((r) => r.status.id === REPORT_STATUS.REJECTED)
+    .reduce((sum, r) => sum + r.hours_spent, 0);
+
+  const categoryName = (id: number) => categories.find((c) => c.id === id)?.name;
+
+  const initials = user ? `${user.first_name[0] ?? ''}${user.last_name[0] ?? ''}`.toUpperCase() : '?';
   const headerUser = {
     initials,
     name: user?.full_name ?? '—',
@@ -36,16 +52,9 @@ export default function Servicio() {
     plan: '',
   };
 
-  // Count areas that have at least one goal in any year/subcategory
-  const areasWithGoals = goals?.categories.filter((cat) =>
-    cat.subcategories.some((sub) => sub.goals.length > 0),
-  ).length ?? 0;
-  const totalAreas = goals?.categories.length ?? 5;
-
   return (
     <View className="flex-1 bg-gray-50" style={{ paddingTop: insets.top }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-
         <View
           className="bg-white rounded-2xl flex-row items-center gap-4 mb-5"
           style={{ shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }}
@@ -53,35 +62,51 @@ export default function Servicio() {
           <Header user={headerUser} />
         </View>
 
-        {/* Hours summary card */}
+        {/* Progress card */}
         <View className="rounded-3xl p-6 mb-6 overflow-hidden" style={{ backgroundColor: '#002d4e' }}>
-          <Text className="text-blue-200 text-sm font-medium mb-1">Total Horas de Servicio</Text>
-          {statsLoading ? (
+          <Text className="text-blue-200 text-sm font-medium mb-1">Horas de Servicio</Text>
+          {loading && reports.length === 0 ? (
             <ActivityIndicator color="#60a5fa" size="large" style={{ marginVertical: 16 }} />
-          ) : (
+          ) : error ? (
+            <Text className="text-red-300 text-sm my-3">{error}</Text>
+          ) : required != null ? (
             <>
               <View className="flex-row items-baseline gap-1 mb-4">
-                <Text className="text-white text-5xl font-bold">{hoursCompleted}</Text>
-                {hoursGoal > 0 && (
-                  <Text className="text-blue-300 text-xl">/ {hoursGoal} hs</Text>
-                )}
+                <Text className="text-white text-5xl font-bold">{approved}</Text>
+                <Text className="text-blue-300 text-xl">/ {required} horas</Text>
               </View>
-              {hoursGoal > 0 && (
-                <>
-                  <View className="h-2 bg-white/20 rounded-full overflow-hidden mb-2">
-                    <View className="h-full bg-blue-400 rounded-full" style={{ width: `${progress}%` }} />
-                  </View>
-                  <Text className="text-blue-200 text-xs">{progress}% de la meta completada</Text>
-                </>
-              )}
+              <ProgressBar percent={percent} trackClass="bg-white/20" fillClass="bg-blue-400" />
+              <Text className="text-blue-200 text-xs mt-2 mb-4">
+                {Math.round(percent)}% completado · {remaining ?? 0} horas restantes
+              </Text>
+              <View className="flex-row gap-2 flex-wrap">
+                <Pill dotClass="bg-green-400" label={`${approved} aprobadas`} />
+                <Pill dotClass="bg-amber-400" label={`${pendingHours} pendientes`} />
+                <Pill dotClass="bg-red-400" label={`${rejectedHours} rechazadas`} />
+                <Pill dotClass="bg-sky-400" label={`${remaining ?? 0} restantes`} />
+              </View>
+            </>
+          ) : (
+            <>
+              <Text className="text-white text-lg font-semibold mt-1">Total de horas:</Text>
+              <View className="flex-row items-baseline gap-1 mb-2">
+                <Text className="text-white text-5xl font-bold">{approved}</Text>
+                <Text className="text-blue-300 text-xl">horas aprobadas</Text>
+              </View>
+              <Text className="text-blue-200 text-xs mb-4">
+                Tu curso todavía no tiene una meta de horas configurada.
+              </Text>
+              <View className="flex-row gap-2 flex-wrap">
+                <Pill dotClass="bg-green-400" label={`${approved} aprobadas`} />
+                <Pill dotClass="bg-amber-400" label={`${pendingHours} pendientes`} />
+                <Pill dotClass="bg-red-400" label={`${rejectedHours} rechazadas`} />
+              </View>
             </>
           )}
         </View>
 
-        {/* Acciones Rápidas */}
-        <Text className="text-xs text-gray-400 uppercase tracking-widest font-semibold mb-3">
-          Acciones Rápidas
-        </Text>
+        {/* Shortcuts */}
+        <Text className="text-xs text-gray-400 uppercase tracking-widest font-semibold mb-3">Acciones Rápidas</Text>
         <View className="gap-3 mb-6">
           <CardAccionRapida
             icon={<ClipboardCheck color="#3B82F6" size={22} />}
@@ -99,29 +124,24 @@ export default function Servicio() {
           />
         </View>
 
-        {/* Mi Brújula de Vida preview */}
-        {/* <Text className="text-base font-bold text-gray-800 mb-3">Mi Brújula de Vida</Text> */}
-       {/*  <View
-          className="bg-white rounded-2xl p-4 flex-row gap-4"
-          style={{ shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }}
-        >
-          <View className="w-12 h-12 rounded-xl bg-purple-100 items-center justify-center">
-            <Sparkles color="#7C3AED" size={22} />
+        {/* Latest 5 reports (read-only) */}
+        <View className="flex-row items-center justify-between mb-3">
+          <Text className="text-xs text-gray-400 uppercase tracking-widest font-semibold">Reportes recientes</Text>
+          {reports.length > 0 && (
+            <Pressable className="active:opacity-70" onPress={() => router.push('/historial-hs')}>
+              <Text className="text-blue-500 text-sm font-medium">Ver todo</Text>
+            </Pressable>
+          )}
+        </View>
+        {reports.length === 0 && !loading ? (
+          <Text className="text-center text-gray-400 mt-2">Todavía no enviaste reportes.</Text>
+        ) : (
+          <View className="gap-3">
+            {reports.slice(0, 5).map((r) => (
+              <ReportItem key={r.id} report={r} categoryName={categoryName(r.category_id)} readOnly />
+            ))}
           </View>
-          <View className="w-12 h-12 rounded-xl bg-green-100 items-center justify-center">
-            <GraduationCap color="#059669" size={22} />
-          </View>
-          <View className="flex-1 justify-center">
-            <Text className="text-sm text-gray-500">{areasWithGoals} de {totalAreas} áreas con metas</Text>
-          </View>
-          <Pressable
-            className="self-center active:opacity-70"
-            onPress={() => router.push('/(tabs)/brujula')}
-          >
-            <Text className="text-blue-500 font-medium text-sm">Ver todo</Text>
-          </Pressable>
-        </View> */}
-
+        )}
       </ScrollView>
     </View>
   );

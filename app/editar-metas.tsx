@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, Info, Lightbulb } from 'lucide-react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CardGoals from '@/components/CardGoals';
 import GoalGuideModal from '@/components/GoalGuideModal';
@@ -62,11 +63,7 @@ export default function EditarMetas() {
   const year = selectedYear ?? years[0];
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-gray-50"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-gray-50" style={{ paddingTop: insets.top }}>
       {/* Header */}
       <View className="flex-row items-center px-4 py-4 bg-white border-b border-gray-100">
         <Pressable className="flex-row items-center gap-1 active:opacity-70" onPress={goBack}>
@@ -86,9 +83,10 @@ export default function EditarMetas() {
           <Text className="text-gray-500 text-center">No se encontró tu plan de Brújula de Vida.</Text>
         </View>
       ) : (
-        <ScrollView
+        <KeyboardAwareScrollView
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          bottomOffset={24}
           contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
         >
           {/* Quick category switch — local state only, no reload */}
@@ -183,7 +181,7 @@ export default function EditarMetas() {
               &quot;Leer 10 páginas diarias&quot;.
             </Text>
           </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       )}
 
       <GoalGuideModal
@@ -193,6 +191,6 @@ export default function EditarMetas() {
         accentColor={style.accentColor}
         onClose={() => setGuideFor(null)}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 }

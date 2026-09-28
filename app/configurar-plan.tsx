@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CalendarDays, ChevronLeft, Info, Sparkles } from 'lucide-react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import VisionGuideModal from '@/components/VisionGuideModal';
 import { useCompass } from '@/hooks/useCompass';
@@ -48,11 +49,7 @@ export default function ConfigurarPlan() {
   };
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-gray-50"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-gray-50" style={{ paddingTop: insets.top }}>
       <View className="flex-row items-center px-4 py-4 bg-white border-b border-gray-100">
         <Pressable className="w-9 h-9 items-center justify-center rounded-full active:bg-gray-100" onPress={() => router.back()}>
           <ChevronLeft color="#002d4e" size={24} />
@@ -61,7 +58,11 @@ export default function ConfigurarPlan() {
         <View className="w-9" />
       </View>
 
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+      <KeyboardAwareScrollView
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={24}
+        contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+      >
         <View className="bg-blue-50 rounded-2xl p-4 mb-6">
           <Text className="text-blue-700 text-sm leading-6">
             Tu Brújula de Vida es un plan a 5 años. Elige el año en que empieza y escribe tu visión personal:
@@ -115,9 +116,9 @@ export default function ConfigurarPlan() {
         >
           {saving ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-base">Guardar</Text>}
         </Pressable>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       <VisionGuideModal visible={showVisionGuide} onClose={() => setShowVisionGuide(false)} />
-    </KeyboardAvoidingView>
+    </View>
   );
 }

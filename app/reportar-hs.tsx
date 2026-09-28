@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Camera, ChevronDown, ChevronLeft, Clock, FileText, X } from 'lucide-react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import SelectModal from '@/components/SelectModal';
@@ -139,11 +140,7 @@ export default function ReportarHS() {
   };
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-white"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
       {/* Header */}
       <View className="flex-row items-center px-4 py-4 border-b border-gray-100">
         <Pressable
@@ -163,9 +160,10 @@ export default function ReportarHS() {
           <ActivityIndicator size="large" color="#002d4e" />
         </View>
       ) : (
-        <ScrollView
+        <KeyboardAwareScrollView
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          bottomOffset={24}
           contentContainerStyle={{ padding: 24, paddingBottom: 40 }}
         >
           {/* Logo */}
@@ -291,8 +289,8 @@ export default function ReportarHS() {
           <Text className="text-center text-xs text-gray-400 tracking-widest uppercase">
             Horas de Servicio • Funval Internacional
           </Text>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       )}
-    </KeyboardAvoidingView>
+    </View>
   );
 }

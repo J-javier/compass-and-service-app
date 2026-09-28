@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CalendarDays, ChevronLeft, Sparkles } from 'lucide-react-native';
+import { CalendarDays, ChevronLeft, Info, Sparkles } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import VisionGuideModal from '@/components/VisionGuideModal';
 import { useCompass } from '@/hooks/useCompass';
 import { getApiErrorCode, getApiErrorMessage } from '@/lib/apiError';
 
@@ -16,6 +17,7 @@ export default function ConfigurarPlan() {
   const [startYear, setStartYear] = useState(String(new Date().getFullYear()));
   const [vision, setVision] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showVisionGuide, setShowVisionGuide] = useState(false);
 
   const handleSave = async () => {
     const year = parseInt(startYear, 10);
@@ -84,7 +86,12 @@ export default function ConfigurarPlan() {
             : ' '}
         </Text>
 
-        <Text className="text-xs text-[#002d4e] font-semibold uppercase tracking-wide mb-2">Mi visión personal</Text>
+        <View className="flex-row items-center gap-1 mb-2">
+          <Text className="text-xs text-[#002d4e] font-semibold uppercase tracking-wide">Mi visión personal</Text>
+          <Pressable className="p-1 active:opacity-70" onPress={() => setShowVisionGuide(true)} hitSlop={8}>
+            <Info color="#9CA3AF" size={16} />
+          </Pressable>
+        </View>
         <View className="bg-white border border-gray-200 rounded-2xl px-4 py-3 mb-1 flex-row gap-3">
           <Sparkles color="#F59E0B" size={20} style={{ marginTop: 2 }} />
           <TextInput
@@ -109,6 +116,8 @@ export default function ConfigurarPlan() {
           {saving ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-base">Guardar</Text>}
         </Pressable>
       </ScrollView>
+
+      <VisionGuideModal visible={showVisionGuide} onClose={() => setShowVisionGuide(false)} />
     </KeyboardAvoidingView>
   );
 }

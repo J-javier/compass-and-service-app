@@ -7,6 +7,7 @@ import CardAreasBrujula from '@/components/CardAreasBrujula';
 import Header from '@/components/Header';
 import ProgressBar from '@/components/ProgressBar';
 import StatusPill from '@/components/StatusPill';
+import VisionGuideModal from '@/components/VisionGuideModal';
 import { getAreaStyle } from '@/constants/areas';
 import { useAuth } from '@/context/AuthContext';
 import { useCompass } from '@/hooks/useCompass';
@@ -28,6 +29,7 @@ export default function Brujula() {
   const [visionDraft, setVisionDraft] = useState('');
   const [startYearDraft, setStartYearDraft] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showVisionGuide, setShowVisionGuide] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   const hasGoals = goals.length > 0;
@@ -146,6 +148,9 @@ export default function Brujula() {
             <View className="flex-row items-center gap-2 flex-1">
               <Sparkles color="#F59E0B" size={20} />
               <Text className="text-base font-bold text-gray-900">Mi Visión Personal</Text>
+              <Pressable className="p-1 active:opacity-70" onPress={() => setShowVisionGuide(true)} hitSlop={8}>
+                <Info color="#9CA3AF" size={16} />
+              </Pressable>
               {statusMeta ? (
                 <StatusPill label={plan.status.name || statusMeta.label} bgClass={statusMeta.bg} textClass={statusMeta.text} />
               ) : null}
@@ -266,6 +271,7 @@ export default function Brujula() {
     <View className="flex-1 bg-gray-50" style={{ paddingTop: insets.top }}>
       <Header user={headerUser} />
       {renderBody()}
+      <VisionGuideModal visible={showVisionGuide} onClose={() => setShowVisionGuide(false)} />
     </View>
   );
 }

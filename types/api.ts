@@ -1,4 +1,4 @@
-// Auth (SIGEF OIDC)
+/* ---------- Auth (SIGEF OIDC) ---------- */
 export interface SigefTokens {
   accessToken: string;
   refreshToken: string | null;
@@ -12,8 +12,8 @@ export interface SigefStudentProfile {
   photo_url: string | null;
   enrollment: {
     status: { id: number; name: string };
-    term: string;
-    course: { id: number; name: string };
+    term: string | null;
+    course: { id: number; name: string | null };
   } | null;
 }
 export interface AuthUser {
@@ -24,10 +24,20 @@ export interface AuthUser {
   last_name: string;
   role: string;
   photo_url: string | null;
+  /** Active enrollment; all null when the student has none. */
+  course_name: string | null;
+  term: string | null;
+}
+export interface ChangePasswordPayload {
+  current_password: string;
+  password: string;
+  password_confirmation: string;
 }
 
-// Horas de Servicio
-export type ServiceReportStatusId = 1 | 2 | 3 | 4; // Pendiente / Aprobado completo / Aprobado parcial / Rechazado
+/* ---------- Horas de Servicio ---------- */
+
+/** 1 Pendiente, 2 Aprobado completo, 3 Aprobado parcial, 4 Rechazado. */
+export type ServiceReportStatusId = 1 | 2 | 3 | 4;
 export interface ServiceReportStatus {
   id: ServiceReportStatusId;
   name: string;
@@ -36,13 +46,16 @@ export interface ServiceReportResponse {
   id: number;
   category_id: number;
   hours_spent: number;
-  description: string;
+  /** Optional since SIGEF 0ef33ea. */
+  description: string | null;
   status: ServiceReportStatus;
   approved_hours: number | null;
   review_notes: string | null;
   reviewed_at: string | null;
-  // Not in the documented sample response — optional so the editability
-  // rule still works if the backend omits it.
+  /**
+   * Not in the documented sample response — optional so the editability
+   * rule still works if the backend omits it.
+   */
   reviewer_id?: number | null;
   has_evidence?: boolean;
   created_at: string;
@@ -50,6 +63,7 @@ export interface ServiceReportResponse {
 export interface ServiceReportsProgress {
   required_hours: number | null;
   approved_hours: number | null;
+  rejected_hours?: number | null;
   remaining_hours: number | null;
   course_name: string | null;
 }
@@ -66,8 +80,10 @@ export interface ServiceCategoryResponse {
   updated_at: string;
 }
 
-// Brújula de Vida
-export type CompassPlanStatusId = 1 | 2 | 3; // Pendiente / Aprobado / Rechazado
+/* ---------- Brújula de Vida ---------- */
+
+/** 1 Pendiente, 2 Aprobado, 3 Rechazado. */
+export type CompassPlanStatusId = 1 | 2 | 3;
 export interface CompassPlanStatus {
   id: CompassPlanStatusId;
   name: string;

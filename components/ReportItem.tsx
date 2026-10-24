@@ -1,86 +1,108 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { CircleCheck, Clock, FileText, PenLine, XCircle } from 'lucide-react-native';
+import { CircleCheck, Clock, FileText, MessageSquare, PenLine, XCircle } from 'lucide-react-native';
 import StatusPill from '@/components/StatusPill';
-import { REPORT_STATUS, REPORT_STATUS_META, formatDate, formatReportHours, isReportEditable } from '@/lib/serviceReports';
+import { CARD_SHADOW, COLORS } from '@/constants/theme';
+import {
+  REPORT_STATUS,
+  REPORT_STATUS_META,
+  formatDate,
+  formatReportHours,
+  isReportEditable,
+  visibleReviewNotes,
+} from '@/lib/serviceReports';
 import { ServiceReportResponse } from '@/types/api';
 
 interface Props {
   report: ServiceReportResponse;
   categoryName?: string;
-  /** Summary view: no evidence/edit actions. */
+  /** Compact summary row: no notes or actions. */
   readOnly?: boolean;
   openingEvidence?: boolean;
   onViewEvidence?: () => void;
   onEdit?: () => void;
 }
 
-function StatusIcon({ statusId, color }: { statusId: number; color: string }) {
-  if (statusId === REPORT_STATUS.PENDING) return <Clock color={color} size={22} />;
-  if (statusId === REPORT_STATUS.REJECTED) return <XCircle color={color} size={22} />;
-  return <CircleCheck color={color} size={22} />;
+/** Status icon: clock (pending), X (rejected) or check (approved). */
+function StatusIcon({ statusId, color, size }: { statusId: number; color: string; size: number }) {
+  if (statusId === REPORT_STATUS.PENDING) return <Clock color={color} size={size} />;
+  if (statusId === REPORT_STATUS.REJECTED) return <XCircle color={color} size={size} />;
+  return <CircleCheck color={color} size={size} />;
 }
 
+/**
+ * One service report. `readOnly` renders the compact summary row; otherwise the
+ * full card with a status stripe, reviewer notes and actions.
+ */
 export default function ReportItem({ report, categoryName, readOnly, openingEvidence, onViewEvidence, onEdit }: Props) {
   const meta = REPORT_STATUS_META[report.status.id] ?? REPORT_STATUS_META[1];
+  const statusLabel = report.status.name || meta.label;
+  const title = categoryName ?? 'Servicio';
+  const description = report.description?.trim();
+
+  if (readOnly) {
+    return (
+      <View className="flex-row items-center gap-3 rounded-2xl bg-white p-3" style={CARD_SHADOW}>
+        <View className="h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: meta.soft }}>
+          <StatusIcon statusId={report.status.id} color={meta.color} size={20} />
+        </View>
+        <View className="flex-1">
+          <Text className="text-body font-semibold text-ink" numberOfLines={1}>{title}</Text>
+          <Text className="text-caption text-muted" numberOfLines={1}>{description || statusLabel}</Text>
+        </View>
+        <View className="items-end">
+          <Text className="text-body font-bold" style={{ color: meta.color }}>{formatReportHours(report)}</Text>
+          <Text className="text-caption text-muted">{formatDate(report.created_at)}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const notes = visibleReviewNotes(report);
   const editable = isReportEditable(report);
-  const showActions = !readOnly && (onViewEvidence || (onEdit && editable));
+  const showActions = onViewEvidence || (onEdit && editable);
 
   return (
     <View
-      className="bg-white rounded-2xl p-4"
-      style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}
+      className="rounded-2xl bg-white p-4"
+      style={[CARD_SHADOW, { borderLeftWidth: 4, borderLeftColor: meta.color }]}
     >
-      <View className="flex-row items-center gap-4">
-        <View className={`w-11 h-11 rounded-full items-center justify-center ${meta.bg}`}>
-          <StatusIcon statusId={report.status.id} color={meta.color} />
-        </View>
-
+      <View className="flex-row items-start gap-3">
         <View className="flex-1">
-          <Text className="text-sm font-bold text-gray-800" numberOfLines={1}>
-            {categoryName ?? 'Servicio'}
-          </Text>
-          <Text className="text-xs text-gray-500 mt-0.5" numberOfLines={readOnly ? 1 : 2}>
-            {report.description}
-          </Text>
-          <Text className="text-xs text-gray-400 mt-0.5">{formatDate(report.created_at)}</Text>
+          <Text className="text-body font-semibold text-ink" numberOfLines={1}>{title}</Text>
+          <Text className="text-caption text-muted">{formatDate(report.created_at)}</Text>
         </View>
-
         <View className="items-end gap-1">
-          <Text className="text-sm font-bold" style={{ color: meta.color }}>
-            {formatReportHours(report)}
-          </Text>
-          <StatusPill label={report.status.name || meta.label} bgClass={meta.bg} textClass={meta.text} />
+          <Text className="text-body font-bold" style={{ color: meta.color }}>{formatReportHours(report)}</Text>
+          <StatusPill label={statusLabel} bgClass={meta.bg} textClass={meta.text} />
         </View>
       </View>
 
-      {!readOnly && report.review_notes ? (
-        <View className="mt-3 bg-gray-50 rounded-xl px-3 py-2">
-          <Text className="text-xs text-gray-600">
-            <Text className="font-semibold">Nota del revisor: </Text>
-            {report.review_notes}
-          </Text>
+      {description ? (
+        <Text className="mt-2 text-label text-muted" numberOfLines={3}>{description}</Text>
+      ) : null}
+
+      {notes ? (
+        <View className="mt-3 rounded-xl px-3 py-2" style={{ backgroundColor: meta.soft }}>
+          <View className="mb-1 flex-row items-center gap-1.5">
+            <MessageSquare color={meta.color} size={14} />
+            <Text className="text-caption font-semibold" style={{ color: meta.color }}>Comentario del revisor</Text>
+          </View>
+          <Text className="text-label text-ink">{notes}</Text>
         </View>
       ) : null}
 
       {showActions ? (
-        <View className="flex-row gap-2 mt-3 pt-3 border-t border-gray-100">
+        <View className="mt-3 flex-row gap-5 border-t border-gray-100 pt-3">
           {onViewEvidence ? (
-            <Pressable
-              className="flex-1 flex-row items-center justify-center gap-2 py-2 rounded-xl bg-blue-50 active:opacity-70"
-              onPress={onViewEvidence}
-              disabled={openingEvidence}
-            >
-              {openingEvidence ? <ActivityIndicator size="small" color="#3B82F6" /> : <FileText color="#3B82F6" size={16} />}
-              <Text className="text-xs font-semibold text-blue-600">Ver evidencia</Text>
+            <Pressable className="flex-row items-center gap-1.5 active:opacity-60" onPress={onViewEvidence} disabled={openingEvidence}>
+              {openingEvidence ? <ActivityIndicator size="small" color={COLORS.brand} /> : <FileText color={COLORS.brand} size={16} />}
+              <Text className="text-label font-semibold text-brand">Ver evidencia</Text>
             </Pressable>
           ) : null}
           {onEdit && editable ? (
-            <Pressable
-              className="flex-1 flex-row items-center justify-center gap-2 py-2 rounded-xl bg-gray-100 active:opacity-70"
-              onPress={onEdit}
-            >
-              <PenLine color="#374151" size={16} />
-              <Text className="text-xs font-semibold text-gray-700">Editar</Text>
+            <Pressable className="flex-row items-center gap-1.5 active:opacity-60" onPress={onEdit}>
+              <PenLine color={COLORS.brand} size={16} />
+              <Text className="text-label font-semibold text-brand">Editar</Text>
             </Pressable>
           ) : null}
         </View>

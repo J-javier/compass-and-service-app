@@ -1,29 +1,39 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronLeft, Info, Lightbulb } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, Check, Info, Lightbulb } from 'lucide-react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CardGoals from '@/components/CardGoals';
 import GoalGuideModal from '@/components/GoalGuideModal';
+import ProgressRing from '@/components/ui/ProgressRing';
+import ScreenHeader from '@/components/ui/ScreenHeader';
 import { getAreaStyle } from '@/constants/areas';
+import { COLORS } from '@/constants/theme';
 import { SUBCATEGORY_GUIDES, getRoleIntro } from '@/constants/goalGuides';
 import { useCompass } from '@/hooks/useCompass';
 import { useGoalAutosave } from '@/hooks/useGoalAutosave';
-import { goalKey, indexGoals, planYears } from '@/lib/compass';
-import { CompassSubcategoryResponse } from '@/types/api';
+import { categoryProgress, goalKey, indexGoals, planYears } from '@/lib/compass';
 
+type Guide = { title: string; description?: string; examples?: string[] };
+
+/**
+ * Goal editor for one area: area switch, year tabs and one autosaved field per
+ * subcategory. Walks the plan year by year, then on to the next area.
+ */
 export default function EditarMetas() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { categoryId: categoryParam } = useLocalSearchParams<{ categoryId?: string }>();
+  const { categoryId: categoryParam, year: yearParam } = useLocalSearchParams<{ categoryId?: string; year?: string }>();
   const { plan, categories, goals, loading, createGoal, updateGoal, deleteGoal } = useCompass();
+  const scrollRef = useRef<ScrollView>(null);
 
   const [categoryId, setCategoryId] = useState<number | null>(categoryParam ? Number(categoryParam) : null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
-  const [guideFor, setGuideFor] = useState<CompassSubcategoryResponse | null>(null);
+  const [guide, setGuide] = useState<Guide | null>(null);
 
   const goalsIndex = useMemo(() => indexGoals(goals), [goals]);
+  /** Saved goal for a (subcategory, year) slot, if any. */
   const findGoal = useCallback(
     (subId: number, year: number) => goalsIndex.get(goalKey(subId, year)),
     [goalsIndex],
@@ -31,30 +41,39 @@ export default function EditarMetas() {
   const autosave = useGoalAutosave({ findGoal, createGoal, updateGoal, deleteGoal });
 
   const years = plan ? planYears(plan.start_year) : [];
-  const category = categories.find((c) => c.id === categoryId) ?? categories[0];
+  const categoryIndex = Math.max(0, categories.findIndex((c) => c.id === categoryId));
+  const category = categories[categoryIndex];
+  const nextCategory = categories[categoryIndex + 1];
   const style = getAreaStyle(category?.name ?? '');
-  const IconComp = style.icon;
-  const roleIntro = category ? getRoleIntro(category.name) : undefined;
   const hasVision = !!plan?.vision?.trim();
 
-  // Default to the current year when it's inside the plan, else the first plan year
+  /** Like the web editor, starts on the plan's first year (unless a link asks for a specific one). */
   useEffect(() => {
     if (!plan || selectedYear != null) return;
-    const current = new Date().getFullYear();
-    const ys = planYears(plan.start_year);
-    setSelectedYear(ys.includes(current) ? current : ys[0]);
-  }, [plan, selectedYear]);
+    const requested = Number(yearParam);
+    setSelectedYear(planYears(plan.start_year).includes(requested) ? requested : plan.start_year);
+  }, [plan, selectedYear, yearParam]);
 
-  // Switching year/category/screen flushes pending debounces immediately so
-  // no typed text is lost; drafts are keyed per (subcategory, year) anyway.
+  /** Scrolls back to the top after switching year or area. */
+  const scrollTop = () => scrollRef.current?.scrollTo({ y: 0, animated: true });
+
+  /**
+   * Switches the visible year. Pending debounces are flushed first so no typed
+   * text is lost (drafts are keyed per subcategory and year anyway).
+   */
   const changeYear = (year: number) => {
     autosave.flushAll();
     setSelectedYear(year);
+    scrollTop();
   };
+  /** Switches the area (flushing pending saves) and goes back to the plan's first year. */
   const changeCategory = (id: number) => {
     autosave.flushAll();
     setCategoryId(id);
+    if (plan) setSelectedYear(plan.start_year);
+    scrollTop();
   };
+  /** Waits for pending saves before leaving the screen. */
   const goBack = async () => {
     await autosave.flushAll();
     router.back();
@@ -62,102 +81,144 @@ export default function EditarMetas() {
 
   const year = selectedYear ?? years[0];
 
-  return (
-    <View className="flex-1 bg-gray-50" style={{ paddingTop: insets.top }}>
-      {/* Header */}
-      <View className="flex-row items-center px-4 py-4 bg-white border-b border-gray-100">
-        <Pressable className="flex-row items-center gap-1 active:opacity-70" onPress={goBack}>
-          <ChevronLeft color="#3B82F6" size={20} />
-          <Text className="text-blue-500 font-medium">Volver</Text>
-        </Pressable>
-        <Text className="flex-1 text-center text-base font-bold text-gray-900">Editar Metas</Text>
-        <View style={{ width: 64 }} />
-      </View>
-
-      {loading && !category ? (
+  if (loading && !category) {
+    return (
+      <View className="flex-1 bg-paper">
+        <ScreenHeader title="Editar metas" onBack={goBack} />
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#002d4e" />
+          <ActivityIndicator size="large" color={COLORS.navy} />
         </View>
-      ) : !plan || !category || year == null ? (
+      </View>
+    );
+  }
+  if (!plan || !category || year == null) {
+    return (
+      <View className="flex-1 bg-paper">
+        <ScreenHeader title="Editar metas" onBack={goBack} />
         <View className="flex-1 items-center justify-center px-8">
-          <Text className="text-gray-500 text-center">No se encontró tu plan de Brújula de Vida.</Text>
+          <Text className="text-center text-body text-muted">No se encontró tu plan de Brújula de Vida.</Text>
         </View>
-      ) : (
-        <KeyboardAwareScrollView
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          bottomOffset={24}
-          contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-        >
-          {/* Quick category switch — local state only, no reload */}
-          <View className="flex-row justify-between mb-4">
-            {categories.map((c) => {
-              const s = getAreaStyle(c.name);
-              const QuickIcon = s.icon;
-              const active = c.id === category.id;
-              return (
-                <Pressable
-                  key={c.id}
-                  className="w-12 h-12 rounded-full items-center justify-center active:opacity-70"
-                  style={{
-                    backgroundColor: active ? s.accentColor : s.iconBg,
-                    borderWidth: active ? 0 : 1,
-                    borderColor: '#E5E7EB',
-                  }}
-                  onPress={() => changeCategory(c.id)}
-                  accessibilityLabel={c.name}
+      </View>
+    );
+  }
+
+  const progress = categoryProgress(category, goals, plan.start_year);
+  const yearIndex = years.indexOf(year);
+  const previousYear = years[yearIndex - 1];
+  const nextYear = years[yearIndex + 1];
+  const roleIntro = getRoleIntro(category.name);
+
+  return (
+    <View className="flex-1 bg-paper">
+      <ScreenHeader
+        title={category.name}
+        subtitle={`${progress.completed} de ${progress.total} metas · ${plan.start_year}–${plan.start_year + 4}`}
+        background={style.accentColor}
+        onBack={goBack}
+        right={
+          roleIntro ? (
+            <Pressable
+              className="h-11 w-11 items-center justify-center active:opacity-60"
+              onPress={() => setGuide({ title: `Mi rol ${category.name.toLowerCase()}`, description: roleIntro })}
+              accessibilityLabel={`Guía del rol ${category.name}`}
+            >
+              <Lightbulb color={COLORS.white} size={22} />
+            </Pressable>
+          ) : undefined
+        }
+      />
+
+      <KeyboardAwareScrollView
+        ref={scrollRef as any}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={24}
+        contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}
+      >
+        {/*
+          Area switch — every area visible at once (no sideways scrolling), as in
+          the web's "Ir a otra área": icon inside a progress ring, ✓ when complete,
+          full name below. Local state only, no reload.
+        */}
+        <View className="mb-5 flex-row justify-between">
+          {categories.map((c) => {
+            const s = getAreaStyle(c.name);
+            const AreaIcon = s.icon;
+            const active = c.id === category.id;
+            const p = categoryProgress(c, goals, plan.start_year);
+            const complete = p.total > 0 && p.completed >= p.total;
+            return (
+              <Pressable
+                key={c.id}
+                className="flex-1 items-center gap-1.5 py-1 active:opacity-70"
+                onPress={() => changeCategory(c.id)}
+                disabled={active}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={`${c.name}, ${p.completed} de ${p.total} metas`}
+              >
+                <View>
+                  <ProgressRing percent={p.total ? (p.completed / p.total) * 100 : 0} size={50} strokeWidth={3.5} color={s.accentColor} trackColor="#E4E9F0">
+                    <View
+                      className="h-10 w-10 items-center justify-center rounded-full"
+                      style={{ backgroundColor: active ? s.accentColor : s.iconBg }}
+                    >
+                      <AreaIcon color={active ? COLORS.white : s.iconColor} size={19} />
+                    </View>
+                  </ProgressRing>
+                  {complete ? (
+                    <View className="absolute -bottom-0.5 -right-0.5 h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-green-600">
+                      <Check color={COLORS.white} size={11} strokeWidth={3} />
+                    </View>
+                  ) : null}
+                </View>
+                <Text
+                  className={`text-caption ${active ? 'font-bold' : 'text-muted'}`}
+                  style={active ? { color: s.accentColor } : undefined}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.85}
                 >
-                  <QuickIcon color={active ? '#fff' : s.iconColor} size={20} />
-                </Pressable>
-              );
-            })}
-          </View>
+                  {c.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
-          {/* Area card */}
-          <View className="rounded-2xl p-5 flex-row items-center gap-4 mb-4" style={{ backgroundColor: style.accentColor }}>
-            <View className="w-12 h-12 rounded-xl bg-white/20 items-center justify-center">
-              <IconComp color="#fff" size={24} />
-            </View>
-            <View className="flex-1">
-              <Text className="text-white text-xl font-bold">{category.name}</Text>
-              <Text className="text-sm" style={{ color: style.subtitleColor }}>
-                Planificación Quinquenal {plan.start_year} - {plan.start_year + 4}
-              </Text>
-            </View>
-          </View>
-
-          {roleIntro ? (
-            <View className="flex-row items-start gap-3 bg-white rounded-2xl p-4 mb-5 border border-gray-100">
-              <Lightbulb color={style.accentColor} size={18} style={{ marginTop: 1 }} />
-              <Text className="flex-1 text-xs text-gray-600 leading-5">{roleIntro}</Text>
-            </View>
-          ) : null}
-
-          {!hasVision ? (
-            <View className="flex-row items-start gap-3 bg-amber-50 rounded-2xl p-4 mb-5">
-              <Info color="#D97706" size={16} style={{ marginTop: 2 }} />
-              <Text className="flex-1 text-xs text-amber-700 leading-5">
-                Primero guarda tu visión personal en la pantalla de Brújula para poder cargar metas.
-              </Text>
-            </View>
-          ) : null}
-
-          {/* Year tabs */}
-          <View className="flex-row bg-gray-200 rounded-2xl p-1 mb-6">
-            {years.map((y) => (
+        {/* Year tabs */}
+        <View className="mb-5 flex-row rounded-2xl bg-gray-200 p-1">
+          {years.map((y) => {
+            const active = year === y;
+            return (
               <Pressable
                 key={y}
-                className={`flex-1 py-2 rounded-xl items-center active:opacity-70 ${year === y ? 'bg-white' : ''}`}
+                className={`flex-1 items-center rounded-xl py-2.5 active:opacity-70 ${active ? 'bg-white' : ''}`}
                 onPress={() => changeYear(y)}
               >
-                <Text className={`text-sm font-semibold ${year === y ? 'text-gray-900' : 'text-gray-500'}`}>{y}</Text>
+                <Text className="text-label font-semibold" style={{ color: active ? style.accentColor : COLORS.muted }}>{y}</Text>
               </Pressable>
-            ))}
-          </View>
+            );
+          })}
+        </View>
 
-          {/* One autosaved field per subcategory for the active year */}
-          <View className="gap-4 mb-5">
-            {category.subcategories.map((sub) => (
+        {!hasVision ? (
+          <View className="mb-5 flex-row items-start gap-3 rounded-2xl bg-amber-50 p-4">
+            <Info color="#D97706" size={16} style={{ marginTop: 2 }} />
+            <View className="flex-1">
+              <Text className="text-label text-amber-800">Primero escribe tu visión personal para poder cargar metas.</Text>
+              <Pressable onPress={() => router.push('/configurar-plan?mode=edit')} hitSlop={8}>
+                <Text className="mt-1 text-label font-semibold text-amber-800">Escribir mi visión →</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+
+        {/* One autosaved field per subcategory for the active year */}
+        <View className="mb-6 gap-4">
+          {category.subcategories.map((sub) => {
+            const subGuide = SUBCATEGORY_GUIDES[sub.code];
+            return (
               <CardGoals
                 key={`${sub.id}-${year}`}
                 title={sub.name}
@@ -167,29 +228,61 @@ export default function EditarMetas() {
                 selectedYear={year}
                 status={autosave.getStatus(sub.id, year)}
                 errorMessage={autosave.getError(sub.id, year)}
-                onHelp={() => setGuideFor(sub)}
+                onRetry={() => autosave.retry(sub.id, year)}
+                onHelp={
+                  subGuide
+                    ? () => setGuide({ title: sub.name, description: subGuide.description, examples: subGuide.examples })
+                    : undefined
+                }
                 editable={hasVision}
               />
-            ))}
-          </View>
+            );
+          })}
+        </View>
 
-          <View className="flex-row items-start gap-3 bg-blue-50 rounded-2xl p-4">
-            <Lightbulb color="#3B82F6" size={18} style={{ marginTop: 1 }} />
-            <Text className="flex-1 text-xs text-blue-600 leading-5">
-              <Text className="font-bold">Consejo: </Text>
-              Tus metas se guardan solas mientras escribes. Sé específico: en lugar de &quot;Leer más&quot;, intenta
-              &quot;Leer 10 páginas diarias&quot;.
-            </Text>
-          </View>
-        </KeyboardAwareScrollView>
-      )}
+        {/* Walk the plan year by year, then on to the next area */}
+        <View className="flex-row items-center justify-between border-t border-gray-200 pt-4">
+          {previousYear !== undefined ? (
+            <Pressable className="flex-row items-center gap-1 px-2 py-3 active:opacity-60" onPress={() => changeYear(previousYear)}>
+              <ArrowLeft color={COLORS.muted} size={16} />
+              <Text className="text-body font-semibold text-muted">{previousYear}</Text>
+            </Pressable>
+          ) : (
+            <View />
+          )}
+          {nextYear !== undefined ? (
+            <Pressable
+              className="flex-row items-center gap-1.5 rounded-2xl px-5 py-3.5 active:opacity-80"
+              style={{ backgroundColor: style.accentColor }}
+              onPress={() => changeYear(nextYear)}
+            >
+              <Text className="text-body font-bold text-white">Siguiente: {nextYear}</Text>
+              <ArrowRight color={COLORS.white} size={16} />
+            </Pressable>
+          ) : nextCategory ? (
+            <Pressable
+              className="flex-row items-center gap-1.5 rounded-2xl px-5 py-3.5 active:opacity-80"
+              style={{ backgroundColor: getAreaStyle(nextCategory.name).accentColor }}
+              onPress={() => changeCategory(nextCategory.id)}
+            >
+              <Text className="text-body font-bold text-white">Continuar con {nextCategory.name}</Text>
+              <ArrowRight color={COLORS.white} size={16} />
+            </Pressable>
+          ) : (
+            <Pressable className="rounded-2xl bg-navy px-5 py-3.5 active:opacity-80" onPress={goBack}>
+              <Text className="text-body font-bold text-white">Volver a la Brújula</Text>
+            </Pressable>
+          )}
+        </View>
+      </KeyboardAwareScrollView>
 
       <GoalGuideModal
-        visible={guideFor != null}
-        title={guideFor?.name ?? ''}
-        guide={guideFor ? SUBCATEGORY_GUIDES[guideFor.code] : undefined}
-        accentColor={style.accentColor}
-        onClose={() => setGuideFor(null)}
+        visible={guide != null}
+        title={guide?.title ?? ''}
+        description={guide?.description}
+        examples={guide?.examples}
+        area={style}
+        onClose={() => setGuide(null)}
       />
     </View>
   );

@@ -41,23 +41,29 @@ export function useGoalAutosave(api: AutosaveApi) {
   const timersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const savedTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const chainsRef = useRef(new Map<string, Promise<void>>());
-  // Server state as known after our own mutations (wins over findGoal, whose
-  // backing React state may lag a render behind).
+  /**
+   * Server state as known after our own mutations (wins over findGoal, whose
+   * backing React state may lag a render behind).
+   */
   const knownRef = useRef(new Map<string, KnownGoal | null>());
 
+  /** Sets a field's status, skipping no-op updates. */
   const setStatus = useCallback((key: string, status: FieldStatus) => {
     setStatuses((prev) => (prev[key] === status ? prev : { ...prev, [key]: status }));
   }, []);
 
+  /** Last known server goal for a field (own mutations win over findGoal). */
   const known = (key: string, subId: number, year: number): KnownGoal | null => {
     if (knownRef.current.has(key)) return knownRef.current.get(key)!;
     const g = apiRef.current.findGoal(subId, year);
     return g ? { id: g.id, goal: g.goal } : null;
   };
 
+  /** Saves one field, chained after any save already in flight for it. */
   const persist = useCallback((key: string): Promise<void> => {
     const [subId, year] = key.split(':').map(Number);
 
+    /** Deletes, creates, updates or skips, depending on the field's draft. */
     const run = async () => {
       const text = (draftsRef.current[key] ?? '').trim();
       const existing = known(key, subId, year);
@@ -84,7 +90,7 @@ export function useGoalAutosave(api: AutosaveApi) {
           const { [key]: _removed, ...rest } = prev;
           return rest;
         });
-        // If the user kept typing meanwhile, the pending debounce owns the status
+        /* If the user kept typing meanwhile, the pending debounce owns the status. */
         if (!timersRef.current.has(key)) {
           setStatus(key, 'saved');
           clearTimeout(savedTimersRef.current.get(key));
@@ -107,6 +113,7 @@ export function useGoalAutosave(api: AutosaveApi) {
     return next;
   }, [setStatus]);
 
+  /** Updates a draft and (re)starts its debounced save. */
   const setValue = useCallback((subcategoryId: number, year: number, text: string) => {
     const key = goalKey(subcategoryId, year);
     draftsRef.current = { ...draftsRef.current, [key]: text };
@@ -132,23 +139,32 @@ export function useGoalAutosave(api: AutosaveApi) {
     await Promise.all(chainsRef.current.values());
   }, [persist]);
 
+  /** Re-runs the save of one field (e.g. after a network error). */
+  const retry = useCallback(
+    (subcategoryId: number, year: number) => persist(goalKey(subcategoryId, year)),
+    [persist],
+  );
+
+  /** Draft value if edited, otherwise the saved goal. */
   const getValue = useCallback((subcategoryId: number, year: number): string => {
     const key = goalKey(subcategoryId, year);
     if (key in drafts) return drafts[key];
     return apiRef.current.findGoal(subcategoryId, year)?.goal ?? '';
   }, [drafts]);
 
+  /** Save status of a field. */
   const getStatus = useCallback(
     (subcategoryId: number, year: number): FieldStatus => statuses[goalKey(subcategoryId, year)] ?? 'idle',
     [statuses],
   );
 
+  /** Last save error of a field, if any. */
   const getError = useCallback(
     (subcategoryId: number, year: number): string | undefined => errors[goalKey(subcategoryId, year)],
     [errors],
   );
 
-  // Don't lose a pending edit when the screen unmounts
+  /** Don't lose a pending edit when the screen unmounts. */
   useEffect(() => {
     const savedTimers = savedTimersRef.current;
     return () => {
@@ -157,5 +173,5 @@ export function useGoalAutosave(api: AutosaveApi) {
     };
   }, [flushAll]);
 
-  return { getValue, setValue, getStatus, getError, flushAll };
+  return { getValue, setValue, getStatus, getError, flushAll, retry };
 }

@@ -16,13 +16,19 @@ Todo el backend es **SIGEF** (Laravel) en `https://sigef.funvaltech.cloud`. La a
 ## Comandos
 
 ```bash
-npm run android   # expo run:android (dev build nativo; no usar Expo Go, hace falta el scheme OAuth)
-npm start         # Metro
-npm run lint      # eslint + prettier --check
-npm run format    # eslint --fix + prettier --write
+pnpm android      # expo run:android (dev build nativo; no usar Expo Go, hace falta el scheme OAuth)
+pnpm start        # Metro
+pnpm lint         # eslint + prettier --check
+pnpm format       # eslint --fix + prettier --write
+cd android && ./gradlew.bat assembleRelease   # APK release
 ```
 
-No hay tests. `package-lock.json` es el lockfile versionado. Puede haber un `pnpm-lock.yaml` y un `.npmrc` (`node-linker=hoisted`) locales sin versionar.
+No hay tests. El gestor es **pnpm** (`pnpm-lock.yaml` y `.npmrc` con `node-linker=hoisted`). `package-lock.json` también está versionado y se mantiene en sincronía. Para agregar dependencias usa `pnpm exec expo install <pkg>`: si `expo install` detecta el lockfile de npm, después hay que correr `pnpm install`.
+
+**Build release en Windows:** la compilación C++ (RelWithDebInfo) genera rutas de objeto de más de 260 caracteres (codegen de `react-native-keyboard-controller`). El Ninja 1.10 que trae CMake 3.22.1 falla con *"Filename longer than 260 characters"*, y acortar la ruta del proyecto no alcanza. Hacen falta tres cosas:
+1. `LongPathsEnabled=1` en el registro de Windows.
+2. CMake 3.31.6 (trae Ninja 1.12.1) instalado desde el SDK Manager.
+3. `cmake.dir=C\:/Android/Sdk/cmake/3.31.6` en `android/local.properties` (es por máquina, está en `.gitignore`; vuelve a agregarlo si regeneras `android/`). Si ya falló una vez, borra `android/app/.cxx`.
 
 ## Arquitectura
 

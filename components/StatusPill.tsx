@@ -6,10 +6,11 @@ interface Props {
   textClass: string;
 }
 
+/** Small rounded status label. */
 export default function StatusPill({ label, bgClass, textClass }: Props) {
   return (
-    <View className={`px-2 py-0.5 rounded-full ${bgClass}`}>
-      <Text className={`text-xs font-semibold ${textClass}`}>{label}</Text>
+    <View className={`rounded-full px-2 py-0.5 ${bgClass}`}>
+      <Text className={`text-overline font-semibold ${textClass}`}>{label}</Text>
     </View>
   );
 }

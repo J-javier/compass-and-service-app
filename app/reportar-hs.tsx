@@ -1,10 +1,11 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Camera, Check, ChevronDown, FileText, Minus, Plus, X } from 'lucide-react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
+import PhotoPreviewModal from '@/components/PhotoPreviewModal';
 import PhotoSourceModal from '@/components/PhotoSourceModal';
 import SelectModal from '@/components/SelectModal';
 import ScreenHeader from '@/components/ui/ScreenHeader';
@@ -65,6 +66,7 @@ export default function ReportarHS() {
   const [photos, setPhotos] = useState<Partial<Record<PhotoSlot, UploadFile>>>({});
   const [busySlot, setBusySlot] = useState<PhotoSlot | null>(null);
   const [sourceFor, setSourceFor] = useState<{ slot: PhotoSlot; label: string } | null>(null);
+  const [previewSlot, setPreviewSlot] = useState<{ slot: PhotoSlot; label: string } | null>(null);
   const [pdf, setPdf] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
@@ -274,6 +276,21 @@ export default function ReportarHS() {
               </Pressable>
             </Field>
             <PhotoSourceModal label={sourceFor?.label ?? null} onSelect={handleSourceSelected} onClose={() => setSourceFor(null)} />
+            <PhotoPreviewModal
+              label={previewSlot?.label ?? null}
+              uri={previewSlot ? (photos[previewSlot.slot]?.uri ?? null) : null}
+              onClose={() => setPreviewSlot(null)}
+              onRemove={() => {
+                if (previewSlot) setPhotos((prev) => ({ ...prev, [previewSlot.slot]: undefined }));
+                setPreviewSlot(null);
+              }}
+              onReplace={() => {
+                const target = previewSlot;
+                setPreviewSlot(null);
+                // Let the preview finish closing before the chooser modal opens.
+                if (target) setTimeout(() => choosePhotoSource(target.slot, target.label), 300);
+              }}
+            />
             <SelectModal
               visible={categoryPickerOpen}
               title="Tipo de actividad"
@@ -382,17 +399,22 @@ export default function ReportarHS() {
                       return (
                         <View key={key} className="flex-1 items-center gap-1.5">
                           <Pressable
-                            className="aspect-square w-full items-center justify-center overflow-hidden rounded-2xl active:opacity-70"
-                            style={photo ? undefined : { borderWidth: 1.5, borderStyle: 'dashed', borderColor: COLORS.brand, backgroundColor: '#F0F7FF' }}
-                            onPress={() => choosePhotoSource(key, label)}
+                            style={[
+                              { width: '100%', aspectRatio: 1, borderRadius: 16, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+                              photo
+                                ? { borderWidth: 1.5, borderColor: COLORS.line, backgroundColor: COLORS.white }
+                                : { borderWidth: 1.5, borderStyle: 'dashed', borderColor: COLORS.brand, backgroundColor: '#F0F7FF' },
+                            ]}
+                            onPress={() => (photo ? setPreviewSlot({ slot: key, label }) : choosePhotoSource(key, label))}
                             disabled={busySlot != null}
-                            accessibilityLabel={`Foto ${label}`}
+                            accessibilityLabel={photo ? `Ver foto ${label}` : `Foto ${label}`}
                           >
                             {busySlot === key ? (
                               <ActivityIndicator color={COLORS.brand} />
                             ) : photo ? (
                               <>
-                                <Image source={{ uri: photo.uri }} className="h-full w-full" resizeMode="cover" />
+                                {/* The tile needs a background/border (see style above): without them Android (Fabric) clips overflow-hidden children to nothing. */}
+                                <Image source={{ uri: photo.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
                                 <View className="absolute right-1.5 top-1.5 h-5 w-5 items-center justify-center rounded-full bg-green-600">
                                   <Check color={COLORS.white} size={12} strokeWidth={3} />
                                 </View>

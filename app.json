@@ -2,6 +2,7 @@
   "expo": {
     "name": "Compass & HS App",
     "slug": "compass-hs",
+    "scheme": "com.fundaciondevalores.sigef",
     "version": "1.0.0",
     "web": {
       "favicon": "./assets/favicon.png"
@@ -10,7 +11,17 @@
       "tsconfigPaths": true
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-web-browser",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Permite el acceso a la cámara para tomar las fotos de evidencia de tus horas de servicio.",
+          "photosPermission": "Permite el acceso a tus fotos para adjuntar la evidencia de tus horas de servicio.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -18,20 +29,22 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0B2545"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fundaciondevalores.sigef"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "monochromeImage": "./assets/adaptive-icon-mono.png",
+        "backgroundColor": "#0B2545"
       },
-      "package": "com.anonymous.compasshs"
+      "package": "com.fundaciondevalores.sigef"
     }
   }
 }

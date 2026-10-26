@@ -1,214 +1,219 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, Text, View, Pressable, TextInput } from 'react-native';
-import { Sparkles, Printer, PenLine, Info } from 'lucide-react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { AlertTriangle, Check, Compass, HelpCircle, Lock, PenLine, Printer } from 'lucide-react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import CardAreasBrujula from '@/components/CardAreasBrujula';
-import Header from '@/components/Header';
-import { AREAS } from '@/constants/areas';
-import { useAuth } from '@/context/AuthContext';
+import StatusPill from '@/components/StatusPill';
+import VisionGuideModal from '@/components/VisionGuideModal';
+import ProgressRing from '@/components/ui/ProgressRing';
+import SectionLabel from '@/components/ui/SectionLabel';
+import { getAreaStyle } from '@/constants/areas';
+import { CARD_SHADOW, COLORS } from '@/constants/theme';
 import { useCompass } from '@/hooks/useCompass';
+import { getApiErrorMessage } from '@/lib/apiError';
+import { PLAN_STATUS, PLAN_STATUS_META, categoryProgress } from '@/lib/compass';
 
+/** Brújula de Vida tab (option A): plan status and progress, vision and the five areas. */
 export default function Brujula() {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
-  const { profile, goals, loading, updateProfile, createProfile, refetchGoals, exportCompass } = useCompass();
+  const router = useRouter();
+  const { plan, progress, categories, goals, loading, error, canExport, refetch, exportCompass } = useCompass({ autoload: false });
+  const [showVisionGuide, setShowVisionGuide] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      refetchGoals();
-    }, [refetchGoals])
-  );
+  /** Goals and vision are edited on other screens — reloads when coming back. */
+  useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
 
-  const [isEditingVision, setIsEditingVision] = useState(false);
-  const [vision, setVision] = useState('');
-  const [visionDraft, setVisionDraft] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  // Seed local vision state when profile loads
-  useEffect(() => {
-    if (profile?.vision != null) {
-      setVision(profile.vision);
-      setVisionDraft(profile.vision);
-    }
-  }, [profile?.vision]);
-
-  const handleStartEditVision = () => {
-    setVisionDraft(vision);
-    setIsEditingVision(true);
-  };
-
-  const handleCancelEditVision = () => {
-    setVisionDraft(vision);
-    setIsEditingVision(false);
-  };
-
-  const handleSaveVision = async () => {
-    const trimmed = visionDraft.trim();
-    if (!trimmed) {
-      setIsEditingVision(false);
-      return;
-    }
-    setSaving(true);
+  /** Downloads the approved plan's PDF and opens it (only enabled once the plan is approved). */
+  const handleExport = async () => {
+    setExporting(true);
     try {
-      if (profile) {
-        await updateProfile({ vision: trimmed });
-      } else {
-        await createProfile({ start_year: new Date().getFullYear(), vision: trimmed });
-      }
-      setVision(trimmed);
-      setIsEditingVision(false);
-    } catch (e: any) {
-      const msg = e?.response?.data?.detail ?? 'No se pudo guardar la visión. Intenta de nuevo.';
-      Alert.alert('Error', typeof msg === 'string' ? msg : 'No se pudo guardar la visión.');
+      await exportCompass();
+    } catch (e) {
+      Alert.alert('Error', getApiErrorMessage(e, 'No se pudo imprimir la Brújula. Intenta de nuevo.'));
     } finally {
-      setSaving(false);
+      setExporting(false);
     }
   };
 
-  // Derive area completion status and progress from the API goals tree
-  const areasWithStatus = AREAS.map((area) => {
-    const apiCategory = goals?.categories.find((c) => c.id === area.id);
-    const yearsCount = goals?.years.length ?? 5;
-    const subCount = apiCategory?.subcategories.length ?? area.goals.length;
-    const totalCount = subCount * yearsCount;
-    const filledCount = apiCategory
-      ? apiCategory.subcategories.reduce((sum, sub) => sum + sub.goals.length, 0)
-      : 0;
-    return {
-      ...area,
-      status: filledCount === totalCount ? ('COMPLETO' as const) : ('PENDIENTE' as const),
-      filledCount,
-      totalCount,
-    };
-  });
+  /** Loading, error, empty (no plan yet) or full plan view. */
+  const renderBody = () => {
+    if (loading && !plan && categories.length === 0) {
+      return (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color={COLORS.navy} />
+        </View>
+      );
+    }
+    if (error && !plan) {
+      return (
+        <View className="flex-1 items-center justify-center gap-4 px-8">
+          <Text className="text-center text-body text-red-600">{error}</Text>
+          <Pressable className="rounded-xl bg-navy px-5 py-3 active:opacity-80" onPress={refetch}>
+            <Text className="text-body font-semibold text-white">Reintentar</Text>
+          </Pressable>
+        </View>
+      );
+    }
+    if (!plan) {
+      return (
+        <ScrollView contentContainerStyle={{ padding: 20 }}>
+          <Text className="mb-5 text-title font-bold text-navy">Mi Brújula</Text>
+          <View className="items-center rounded-3xl bg-white p-6" style={CARD_SHADOW}>
+            <View className="mb-4 h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
+              <Compass color={COLORS.navy} size={30} />
+            </View>
+            <Text className="mb-2 text-center text-heading font-bold text-ink">Crea tu Brújula de Vida</Text>
+            <Text className="mb-6 text-center text-label text-muted">
+              Define tu visión personal y el año de inicio de tu plan a 5 años para empezar a cargar tus metas.
+            </Text>
+            <Pressable className="rounded-2xl bg-navy px-6 py-4 active:opacity-80" onPress={() => router.push('/configurar-plan')}>
+              <Text className="text-body font-bold text-white">Configurar mi plan</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      );
+    }
 
-  const completedCount = areasWithStatus.filter((a) => a.status === 'COMPLETO').length;
-  const allComplete = completedCount === AREAS.length;
+    const statusMeta = PLAN_STATUS_META[plan.status.id] ?? PLAN_STATUS_META[1];
+    const totalSlots = progress.total_possible_slots || 55;
+    const percent = totalSlots > 0 ? (progress.filled_slots / totalSlots) * 100 : 0;
+    const missing = Math.max(totalSlots - progress.filled_slots, 0);
+    const hasVision = !!plan.vision?.trim();
 
-  const initials = user
-    ? `${user.first_name[0] ?? ''}${user.last_name[0] ?? ''}`.toUpperCase()
-    : '?';
+    return (
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+        {/* Title + plan status */}
+        <View className="mb-5 flex-row items-start justify-between gap-3">
+          <View className="flex-1">
+            <Text className="text-title font-bold text-navy">Mi Brújula</Text>
+            <Text className="text-label text-muted">Plan {plan.start_year} – {plan.start_year + 4}</Text>
+          </View>
+          <View className="mt-1.5">
+            <StatusPill label={plan.status.name || statusMeta.label} bgClass={statusMeta.bg} textClass={statusMeta.text} />
+          </View>
+        </View>
 
-  const headerUser = {
-    initials,
-    name: user?.full_name ?? '—',
-    role: user?.role ?? '—',
-    plan: profile ? `${profile.start_year} - ${profile.start_year + 4}` : '',
+        {plan.status.id === PLAN_STATUS.REJECTED && plan.review_notes ? (
+          <View className="mb-4 flex-row items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4">
+            <AlertTriangle color="#DC2626" size={18} style={{ marginTop: 1 }} />
+            <View className="flex-1">
+              <Text className="mb-1 text-label font-bold text-red-700">Motivo del rechazo</Text>
+              <Text className="text-label text-red-600">{plan.review_notes}</Text>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Overall progress — same navy hero as Horas de servicio */}
+        <View className="mb-4 flex-row items-center gap-4 rounded-3xl p-5" style={{ backgroundColor: COLORS.navy }}>
+          <ProgressRing percent={percent} size={88} strokeWidth={9} color={COLORS.celeste} trackColor="rgba(255,255,255,0.14)">
+            <Text className="text-heading font-bold text-white">{Math.round(percent)}%</Text>
+          </ProgressRing>
+          <View className="flex-1">
+            <Text className="text-display font-bold text-white">
+              {progress.filled_slots}
+              <Text className="text-body font-normal" style={{ color: COLORS.onNavyMuted }}> / {totalSlots} metas</Text>
+            </Text>
+            <Text className="text-label" style={{ color: COLORS.onNavyMuted }}>
+              {missing > 0 ? `Te faltan ${missing} para completar tu plan` : '¡Completaste tu Brújula de Vida!'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Vision */}
+        <View className="mb-6 rounded-2xl bg-white p-4" style={[CARD_SHADOW, { borderLeftWidth: 4, borderLeftColor: '#F59E0B' }]}>
+          <View className="mb-2 flex-row items-center justify-between">
+            <View className="flex-row items-center gap-1">
+              <Text className="text-overline font-bold uppercase tracking-widest text-amber-700">Mi visión</Text>
+              <Pressable className="p-1 active:opacity-60" onPress={() => setShowVisionGuide(true)} hitSlop={8} accessibilityLabel="Cómo escribir mi visión">
+                <HelpCircle color={COLORS.faint} size={16} />
+              </Pressable>
+            </View>
+            <Pressable
+              className="flex-row items-center gap-1 active:opacity-60"
+              onPress={() => router.push('/configurar-plan?mode=edit')}
+              hitSlop={8}
+            >
+              <PenLine color={COLORS.brand} size={14} />
+              <Text className="text-label font-semibold text-brand">Editar</Text>
+            </Pressable>
+          </View>
+          {hasVision ? (
+            <Text className="text-label italic text-ink">&ldquo;{plan.vision}&rdquo;</Text>
+          ) : (
+            <Text className="text-label text-muted">
+              Todavía no definiste tu visión personal. No podrás guardar metas hasta que la escribas.
+            </Text>
+          )}
+        </View>
+
+        {/* Areas */}
+        <SectionLabel>Áreas</SectionLabel>
+        <View className="flex-row flex-wrap justify-between gap-y-3">
+          {categories.map((cat) => {
+            const style = getAreaStyle(cat.name);
+            const Icon = style.icon;
+            const { completed, total } = categoryProgress(cat, goals, plan.start_year);
+            const done = total > 0 && completed >= total;
+            return (
+              <Pressable
+                key={cat.id}
+                className="w-[48.5%] rounded-2xl bg-white p-3.5 active:opacity-70"
+                style={CARD_SHADOW}
+                onPress={() =>
+                  hasVision
+                    ? router.push(`/editar-metas?categoryId=${cat.id}`)
+                    : Alert.alert('Visión requerida', 'Primero escribe tu visión personal para poder cargar metas.')
+                }
+              >
+                <View className="mb-3 flex-row items-center gap-2">
+                  <View className="h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: style.iconBg }}>
+                    <Icon color={style.iconColor} size={16} />
+                  </View>
+                  <Text className="flex-1 text-body font-semibold text-ink" numberOfLines={1}>{cat.name}</Text>
+                </View>
+                <View className="mb-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100">
+                  <View className="h-full rounded-full" style={{ width: `${total ? (completed / total) * 100 : 0}%`, backgroundColor: done ? '#16A34A' : style.accentColor }} />
+                </View>
+                {done ? (
+                  <View className="flex-row items-center gap-1">
+                    <Check color="#16A34A" size={12} strokeWidth={3} />
+                    <Text className="text-caption font-semibold text-green-700">Completo</Text>
+                  </View>
+                ) : (
+                  <Text className="text-caption text-muted">{completed}/{total} metas</Text>
+                )}
+              </Pressable>
+            );
+          })}
+
+          {/* Print tile: only actionable once the plan is approved */}
+          <Pressable
+            className="w-[48.5%] items-center justify-center rounded-2xl p-3.5 active:opacity-70"
+            style={canExport ? { backgroundColor: COLORS.navy } : { backgroundColor: '#EEF1F5' }}
+            disabled={!canExport || exporting}
+            onPress={handleExport}
+          >
+            {exporting ? (
+              <ActivityIndicator color={COLORS.white} />
+            ) : canExport ? (
+              <Printer color={COLORS.white} size={20} />
+            ) : (
+              <Lock color={COLORS.faint} size={20} />
+            )}
+            <Text className="mt-2 text-center text-caption font-semibold" style={{ color: canExport ? COLORS.white : COLORS.muted }}>
+              {canExport ? 'Imprimir Brújula' : 'Se habilita cuando tu Brújula sea aprobada'}
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    );
   };
 
   return (
-    <View className="flex-1 bg-gray-50" style={{ paddingTop: insets.top }}>
-      <Header user={headerUser} />
-
-      {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#002d4e" />
-        </View>
-      ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-          {/* Visión Personal */}
-          <View
-            className="bg-white rounded-2xl p-5 mb-5"
-            style={{ shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }}
-          >
-            <View className="flex-row items-center justify-between mb-3">
-              <View className="flex-row items-center gap-2">
-                <Sparkles color="#F59E0B" size={20} />
-                <Text className="text-base font-bold text-gray-900">Mi Visión Personal</Text>
-              </View>
-
-              {!isEditingVision ? (
-                <Pressable className="active:opacity-70" onPress={handleStartEditVision}>
-                  <PenLine color="#9CA3AF" size={18} />
-                </Pressable>
-              ) : (
-                <View className="flex-row items-center gap-2">
-                  <Pressable
-                    className="px-3 py-1.5 rounded-lg bg-gray-100 active:opacity-70"
-                    onPress={handleCancelEditVision}
-                    disabled={saving}
-                  >
-                    <Text className="text-xs font-semibold text-gray-600">Cancelar</Text>
-                  </Pressable>
-                  <Pressable
-                    className="px-3 py-1.5 rounded-lg bg-blue-500 active:opacity-70"
-                    onPress={handleSaveVision}
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text className="text-xs font-semibold text-white">Guardar</Text>
-                    )}
-                  </Pressable>
-                </View>
-              )}
-            </View>
-
-            <TextInput
-              className={`text-sm leading-6 ${isEditingVision ? 'text-gray-800' : 'text-gray-600 italic'}`}
-              value={isEditingVision ? visionDraft : vision}
-              onChangeText={setVisionDraft}
-              editable={isEditingVision}
-              multiline
-              textAlignVertical="top"
-              placeholder="Escribe tu visión personal..."
-              placeholderTextColor="#9CA3AF"
-            />
-          </View>
-
-          {/* Áreas de la Brújula */}
-          <View className="gap-3 mb-5">
-            {areasWithStatus.map((area) => (
-              <CardAreasBrujula
-                key={area.id}
-                area={area}
-                onPress={!profile ? () => Alert.alert(
-                  'Perfil requerido',
-                  'Primero guarda tu visión personal para poder editar las metas.'
-                ) : undefined}
-              />
-            ))}
-          </View>
-
-          {!allComplete && (
-            <View className="flex-row items-start gap-3 bg-blue-50 rounded-2xl p-4 mb-5">
-              <Info color="#3B82F6" size={16} style={{ marginTop: 2 }} />
-              <Text className="flex-1 text-xs text-blue-600 leading-5">
-                Debes completar las metas de todas las áreas para poder desbloquear la opción de imprimir tu
-                Brújula de Vida.
-              </Text>
-            </View>
-          )}
-
-          <Pressable
-            className={`flex-row items-center justify-center gap-3 p-4 rounded-2xl ${allComplete && !exporting ? 'bg-[#002d4e] active:opacity-70' : 'bg-gray-200'}`}
-            disabled={!allComplete || exporting}
-            onPress={async () => {
-              setExporting(true);
-              try {
-                await exportCompass();
-              } catch (e: any) {
-                const msg = e?.message ?? 'No se pudo exportar la brújula. Intenta de nuevo.';
-                Alert.alert('Error', msg);
-              } finally {
-                setExporting(false);
-              }
-            }}
-          >
-            {exporting ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Printer color={allComplete ? '#fff' : '#9CA3AF'} size={20} />
-            )}
-            <Text className={`font-semibold text-base ${allComplete && !exporting ? 'text-white' : 'text-gray-400'}`}>
-              {exporting ? 'Exportando...' : 'Imprimir Brújula'}
-            </Text>
-          </Pressable>
-        </ScrollView>
-      )}
+    <View className="flex-1 bg-paper" style={{ paddingTop: insets.top }}>
+      {renderBody()}
+      <VisionGuideModal visible={showVisionGuide} onClose={() => setShowVisionGuide(false)} />
     </View>
   );
 }

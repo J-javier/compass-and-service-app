@@ -1,117 +1,128 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import api from '@/services/api';
-import {
-  EvidenceResponse,
-  ReportListResponse,
-  ReportResponse,
-  ReportStatus,
-  ReviewPayload,
-} from '@/types/api';
+import { useCallback, useEffect, useState } from 'react';
+import sigefApi from '@/services/sigefApi';
+import { getApiErrorMessage } from '@/lib/apiError';
+import { unwrapData } from '@/lib/apiData';
+import { openAuthenticatedPdf } from '@/lib/downloadPdf';
+import { ServiceReportListResponse, ServiceReportResponse, ServiceReportsProgress } from '@/types/api';
 
-const PAGE_SIZE = 20;
+const BASE = '/api/students/service-reports';
 
-export function useReports() {
-  const [data, setData] = useState<ReportResponse[]>([]);
+const EMPTY_PROGRESS: ServiceReportsProgress = {
+  required_hours: null,
+  approved_hours: null,
+  rejected_hours: null,
+  remaining_hours: null,
+  course_name: null,
+};
+
+export interface UploadFile {
+  uri: string;
+  name: string;
+  type: string;
+}
+
+/**
+ * Evidence travels in one of two shapes, never both (SIGEF rejects the mix):
+ * a PDF, or the three before/during/after photos that the server merges into
+ * a PDF. All three photos are required together.
+ */
+export type ReportEvidence =
+  | { kind: 'pdf'; file: UploadFile }
+  | { kind: 'photos'; before: UploadFile; during: UploadFile; after: UploadFile };
+
+export interface ReportPayload {
+  category_id?: number;
+  /** Whole hours, ≥ 1. */
+  hours_spent?: number;
+  /** Optional; empty string clears it. */
+  description?: string;
+  evidence?: ReportEvidence;
+}
+
+/** Multipart body for create/update; only the evidence of the chosen kind is sent. */
+function toFormData(payload: ReportPayload): FormData {
+  const fd = new FormData();
+  if (payload.category_id != null) fd.append('category_id', String(payload.category_id));
+  if (payload.hours_spent != null) fd.append('hours_spent', String(payload.hours_spent));
+  if (payload.description != null) fd.append('description', payload.description);
+  const ev = payload.evidence;
+  if (ev?.kind === 'pdf') {
+    fd.append('evidence', ev.file as any);
+  } else if (ev?.kind === 'photos') {
+    fd.append('evidence_before', ev.before as any);
+    fd.append('evidence_during', ev.during as any);
+    fd.append('evidence_after', ev.after as any);
+  }
+  return fd;
+}
+
+const MULTIPART = { headers: { 'Content-Type': 'multipart/form-data' } };
+
+/** Service reports of the signed-in student, with hours progress and mutations. */
+export function useReports({ autoload = true }: { autoload?: boolean } = {}) {
+  const [data, setData] = useState<ServiceReportResponse[]>([]);
+  const [progress, setProgress] = useState<ServiceReportsProgress>(EMPTY_PROGRESS);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [status, setStatus] = useState<ReportStatus | null>(null);
 
-  // Guards against a stale (out-of-order) response overwriting a newer one,
-  // e.g. rapidly switching status filters.
-  const requestIdRef = useRef(0);
+  /** Loads all reports (newest first) and the hours progress. */
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await sigefApi.get<ServiceReportListResponse>(BASE);
+      const reports = [...(res.data.data ?? [])].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+      setData(reports);
+      setProgress(res.data.progress ?? EMPTY_PROGRESS);
+    } catch (e) {
+      setError(getApiErrorMessage(e, 'Error al cargar reportes'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const fetchPage = useCallback(
-    async (pageToLoad: number, statusFilter: ReportStatus | null, append: boolean) => {
-      const requestId = ++requestIdRef.current;
-      append ? setLoadingMore(true) : setLoading(true);
-      setError(null);
-      try {
-        const res = await api.get<ReportListResponse>('/reports/', {
-          params: {
-            page: pageToLoad,
-            page_size: PAGE_SIZE,
-            ...(statusFilter ? { status: statusFilter } : {}),
-          },
-        });
-        if (requestId !== requestIdRef.current) return;
-        setData((prev) => (append ? [...prev, ...res.data.items] : res.data.items));
-        setPage(res.data.page);
-        setTotal(res.data.total);
-      } catch (e: any) {
-        if (requestId !== requestIdRef.current) return;
-        setError(e?.response?.data?.detail ?? 'Error al cargar reportes');
-      } finally {
-        if (requestId === requestIdRef.current) {
-          append ? setLoadingMore(false) : setLoading(false);
-        }
-      }
-    },
+  useEffect(() => { if (autoload) refetch(); }, [autoload, refetch]);
+
+  /** Fetches one report. */
+  const getReport = useCallback(async (id: number) => {
+    const res = await sigefApi.get(`${BASE}/${id}`);
+    return unwrapData<ServiceReportResponse>(res.data);
+  }, []);
+
+  /** Creates a report (multipart) and prepends it to the list. */
+  const createReport = useCallback(async (payload: ReportPayload) => {
+    const res = await sigefApi.post(BASE, toFormData(payload), MULTIPART);
+    const created = unwrapData<ServiceReportResponse>(res.data);
+    setData((prev) => [created, ...prev]);
+    return created;
+  }, []);
+
+  /**
+   * Updates a report. PHP doesn't parse multipart bodies on PATCH, so when new
+   * evidence is attached it uses Laravel's method spoofing (POST + _method).
+   */
+  const updateReport = useCallback(async (id: number, payload: ReportPayload) => {
+    let res;
+    if (payload.evidence) {
+      const fd = toFormData(payload);
+      fd.append('_method', 'PATCH');
+      res = await sigefApi.post(`${BASE}/${id}`, fd, MULTIPART);
+    } else {
+      const { evidence: _omit, ...json } = payload;
+      res = await sigefApi.patch(`${BASE}/${id}`, json);
+    }
+    const updated = unwrapData<ServiceReportResponse>(res.data);
+    setData((prev) => prev.map((r) => (r.id === id ? updated : r)));
+    return updated;
+  }, []);
+
+  /** Downloads a report's evidence PDF and opens it. */
+  const openEvidence = useCallback(
+    (id: number) => openAuthenticatedPdf(`${BASE}/${id}/evidencia`, `evidencia-${id}.pdf`, 'Evidencia'),
     [],
   );
 
-  const refetch = useCallback(() => fetchPage(1, status, false), [fetchPage, status]);
-
-  const setStatusFilter = useCallback(
-    (next: ReportStatus | null) => {
-      setStatus(next);
-      fetchPage(1, next, false);
-    },
-    [fetchPage],
-  );
-
-  const loadMore = useCallback(() => {
-    if (loading || loadingMore) return;
-    if (data.length >= total) return;
-    fetchPage(page + 1, status, true);
-  }, [fetchPage, loading, loadingMore, data.length, total, page, status]);
-
-  useEffect(() => { fetchPage(1, null, false); }, [fetchPage]);
-
-  const createReport = useCallback(async (formData: FormData) => {
-    const res = await api.post<ReportResponse>('/reports/', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    setData((prev) => [res.data, ...prev]);
-    setTotal((prev) => prev + 1);
-    return res.data;
-  }, []);
-
-  const updateReport = useCallback(async (id: number, formData: FormData) => {
-    const res = await api.patch<ReportResponse>(`/reports/${id}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    setData((prev) => prev.map((r) => (r.id === id ? res.data : r)));
-    return res.data;
-  }, []);
-
-  const reviewReport = useCallback(async (id: number, payload: ReviewPayload) => {
-    const res = await api.patch<ReportResponse>(`/reports/${id}/review`, payload);
-    setData((prev) => prev.map((r) => (r.id === id ? res.data : r)));
-    return res.data;
-  }, []);
-
-  const getEvidence = useCallback(async (id: number) => {
-    const res = await api.get<EvidenceResponse>(`/reports/${id}/evidence`);
-    return res.data;
-  }, []);
-
-  return {
-    data,
-    loading,
-    loadingMore,
-    error,
-    total,
-    page,
-    status,
-    refetch,
-    loadMore,
-    setStatusFilter,
-    createReport,
-    updateReport,
-    reviewReport,
-    getEvidence,
-  };
+  return { data, progress, loading, error, refetch, getReport, createReport, updateReport, openEvidence };
 }

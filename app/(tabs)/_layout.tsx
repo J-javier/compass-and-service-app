@@ -1,14 +1,18 @@
 import { Tabs } from 'expo-router';
 import { Home, ClipboardList, Compass, User } from 'lucide-react-native';
+import { COLORS } from '@/constants/theme';
 
+/** Bottom tab navigator: Inicio, Servicio, Brújula and Perfil. */
 export default function TabsLayout() {
     return (
         <Tabs
             screenOptions={{
                 headerShown: false,
-                tabBarActiveTintColor: '#002d4e',
-                tabBarInactiveTintColor: '#9CA3AF',
-                tabBarStyle: { backgroundColor: '#fff', borderTopColor: '#E5E7EB' },
+                tabBarActiveTintColor: COLORS.navy,
+                tabBarInactiveTintColor: COLORS.faint,
+                tabBarStyle: { backgroundColor: COLORS.white, borderTopColor: COLORS.line },
+                /** Same size as the `caption` step of the type scale. */
+                tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
             }}
         >
             <Tabs.Screen

@@ -1,141 +1,176 @@
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ReactNode, useCallback } from 'react';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  CalendarDays,
-  ChevronRight,
-  Bell,
-  Lock,
-  HelpCircle,
-  LogOut,
-  CircleUserRound,
-} from 'lucide-react-native';
+import * as WebBrowser from 'expo-web-browser';
+import Constants from 'expo-constants';
+import { Bell, ChevronRight, Clock, Compass, ExternalLink, HelpCircle, KeyRound, LogOut } from 'lucide-react-native';
+import SectionLabel from '@/components/ui/SectionLabel';
+import { SIGEF_BASE_URL } from '@/constants/oidc';
+import { CARD_SHADOW, COLORS } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { useDashboard, DashboardStats } from '@/hooks/useDashboard';
-import { StudentDashboardStats } from '@/types/api';
+import { useCompass } from '@/hooks/useCompass';
+import { useReports } from '@/hooks/useReports';
+import { formatHours } from '@/lib/serviceReports';
 
-function isStudentStats(stats: DashboardStats): stats is StudentDashboardStats {
-  return 'reports' in stats && 'course_progress' in stats;
+const AVATAR = 88;
+
+/** Settings-style row with icon, label and an optional value or trailing element. */
+function Row({ icon, label, value, trailing, onPress, disabled, last }: {
+  icon: ReactNode;
+  label: string;
+  value?: string;
+  trailing?: ReactNode;
+  onPress?: () => void;
+  disabled?: boolean;
+  last?: boolean;
+}) {
+  return (
+    <Pressable
+      className={`min-h-[52px] flex-row items-center gap-3 px-4 py-3 ${onPress ? 'active:bg-gray-50' : ''} ${last ? '' : 'border-b border-gray-100'}`}
+      onPress={onPress}
+      disabled={!onPress || disabled}
+      style={disabled ? { opacity: 0.5 } : undefined}
+    >
+      {icon}
+      <Text className="flex-1 text-body text-ink">{label}</Text>
+      {value ? <Text className="text-body font-semibold text-navy">{value}</Text> : null}
+      {trailing}
+    </Pressable>
+  );
 }
 
-const MENU_ITEMS = [
-  { id: 1, label: 'Editar Perfil', icon: CircleUserRound, color: '#3B82F6' },
-  { id: 2, label: 'Notificaciones', icon: Bell, color: '#8B5CF6' },
-  { id: 3, label: 'Seguridad', icon: Lock, color: '#059669' },
-  { id: 4, label: 'Ayuda y Soporte', icon: HelpCircle, color: '#F59E0B' },
-];
+/** Titled group of rows inside a single card. */
+function Group({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <View className="mb-6">
+      <SectionLabel>{title}</SectionLabel>
+      <View className="overflow-hidden rounded-2xl bg-white" style={CARD_SHADOW}>{children}</View>
+    </View>
+  );
+}
 
+/** Perfil tab: identity card, progress summary, account and support options, logout. */
 export default function Perfil() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { user, logout } = useAuth();
-  const { data: stats, loading } = useDashboard();
+  const { progress: hsProgress, loading: hsLoading, refetch: refetchReports } = useReports({ autoload: false });
+  const { plan, progress: compassProgress, loading: compassLoading, refetch: refetchCompass } = useCompass({ autoload: false });
+  /** Spinner only on first load; focus refetches update values in place. */
+  const loading = (hsLoading || compassLoading) && !plan && hsProgress.approved_hours == null;
 
-  const studentStats = stats && isStudentStats(stats) ? stats : null;
-  const hoursApproved = studentStats?.reports.total_hours_approved ?? 0;
-  const approvalRate = studentStats?.reports.approval_rate ?? 0;
-  const compassProgress = studentStats?.course_progress;
+  useFocusEffect(useCallback(() => {
+    refetchReports();
+    refetchCompass();
+  }, [refetchReports, refetchCompass]));
 
-  const initials = user
-    ? `${user.first_name[0] ?? ''}${user.last_name[0] ?? ''}`.toUpperCase()
-    : '?';
-  const startYear = compassProgress ? new Date().getFullYear() : 2025;
-  const planLabel = `${startYear} - ${startYear + 4}`;
+  const initials = user ? `${user.first_name[0] ?? ''}${user.last_name[0] ?? ''}`.toUpperCase() : '?';
+  const approved = formatHours(hsProgress.approved_hours);
+  const hoursValue = hsProgress.required_hours != null ? `${approved} / ${formatHours(hsProgress.required_hours)} h` : `${approved} h`;
+  const compassValue = plan ? `${compassProgress.filled_slots} / ${compassProgress.total_possible_slots || 55}` : 'Sin plan';
+
+  /** Asks before logging out: getting back in requires going through SIGEF again. */
+  const confirmLogout = () =>
+    Alert.alert('Cerrar sesión', '¿Seguro que quieres salir? Tendrás que volver a iniciar sesión con SIGEF.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Cerrar sesión', style: 'destructive', onPress: logout },
+    ]);
 
   return (
-    <View className="flex-1 bg-gray-50" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-paper" style={{ paddingTop: insets.top }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        <Text className="text-2xl font-bold text-gray-900 mb-6">Mi Perfil</Text>
+        <Text className="mb-5 text-title font-bold text-navy">Perfil</Text>
 
-        {/* Profile card */}
+        {/* Identity */}
         <View
-          className="bg-white rounded-3xl p-6 items-center mb-6"
-          style={{ shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 10, elevation: 4 }}
+          className="mb-6 items-center rounded-3xl"
+          style={{ backgroundColor: COLORS.navy, paddingTop: 28, paddingBottom: 24, paddingHorizontal: 24 }}
         >
-          <View className="w-20 h-20 rounded-2xl bg-[#002d4e] items-center justify-center mb-3">
-            <Text className="text-white text-2xl font-bold">{initials}</Text>
-          </View>
-          <View className="absolute top-4 right-4 w-3 h-3 rounded-full bg-green-500" />
-
-          <Text className="text-xl font-bold text-gray-900">{user?.full_name ?? '—'}</Text>
-          <Text className="text-sm text-gray-500 mb-2">{user?.role ?? '—'}</Text>
-          <Text className="text-xs text-gray-400 mb-3">{user?.email ?? '—'}</Text>
-
-          <View className="flex-row items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-full">
-            <CalendarDays color="#3B82F6" size={13} />
-            <Text className="text-xs text-blue-500 font-semibold uppercase tracking-wide">
-              Plan {planLabel}
-            </Text>
-          </View>
-        </View>
-
-        {/* Stats row */}
-        {loading ? (
-          <ActivityIndicator color="#3B82F6" size="small" style={{ marginBottom: 24 }} />
-        ) : (
-          <View className="flex-row gap-3 mb-6">
-            <View
-              className="flex-1 bg-white rounded-2xl p-4 items-center"
-              style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}
-            >
-              <Text className="text-2xl font-bold text-[#002d4e]">{hoursApproved}</Text>
-              <Text className="text-xs text-gray-400 mt-1 text-center">Horas Servicio</Text>
-            </View>
-            <View
-              className="flex-1 bg-white rounded-2xl p-4 items-center"
-              style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}
-            >
-              <Text className="text-2xl font-bold text-green-500">
-                {compassProgress
-                  ? `${Math.round(compassProgress.progress_percentage)}%`
-                  : '—'}
-              </Text>
-              <Text className="text-xs text-gray-400 mt-1 text-center">Progreso Curso</Text>
-            </View>
-            <View
-              className="flex-1 bg-white rounded-2xl p-4 items-center"
-              style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}
-            >
-              <Text className="text-2xl font-bold text-blue-500">
-                {Math.round(approvalRate * 100)}%
-              </Text>
-              <Text className="text-xs text-gray-400 mt-1 text-center">Aprobación</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Menu items */}
-        <Text className="text-xs text-gray-400 uppercase tracking-widest font-semibold mb-3">Configuración</Text>
-        <View
-          className="bg-white rounded-2xl overflow-hidden mb-6"
-          style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}
-        >
-          {MENU_ITEMS.map((item, index) => {
-            const IconComp = item.icon;
-            return (
-              <Pressable
-                key={item.id}
-                className={`flex-row items-center gap-4 px-4 py-4 active:bg-gray-50 ${index < MENU_ITEMS.length - 1 ? 'border-b border-gray-100' : ''}`}
+          <View className="mb-4 rounded-full p-1" style={{ borderWidth: 2, borderColor: COLORS.celeste }}>
+            {user?.photo_url ? (
+              <Image source={{ uri: user.photo_url }} style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2 }} />
+            ) : (
+              <View
+                className="items-center justify-center bg-brand"
+                style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2 }}
               >
-                <View
-                  className="w-9 h-9 rounded-xl items-center justify-center"
-                  style={{ backgroundColor: `${item.color}20` }}
-                >
-                  <IconComp color={item.color} size={18} />
+                <Text className="text-title font-bold text-white">{initials}</Text>
+              </View>
+            )}
+          </View>
+          <Text className="text-center text-title font-bold text-white" numberOfLines={2}>{user?.full_name ?? '—'}</Text>
+          <Text className="mt-1 text-center text-body" style={{ color: COLORS.onNavyMuted }} numberOfLines={1}>
+            {user?.email ?? '—'}
+          </Text>
+          {user?.course_name || user?.role ? (
+            <View className="mt-4 flex-row flex-wrap justify-center gap-2">
+              {user?.course_name ? (
+                <View className="rounded-full px-3 py-1" style={{ backgroundColor: 'rgba(107,184,211,0.18)' }}>
+                  <Text className="text-label font-semibold text-celeste" numberOfLines={1}>
+                    {user.course_name}{user.term ? ` · ${user.term}` : ''}
+                  </Text>
                 </View>
-                <Text className="flex-1 text-sm font-medium text-gray-700">{item.label}</Text>
-                <ChevronRight color="#D1D5DB" size={18} />
-              </Pressable>
-            );
-          })}
+              ) : null}
+              {user?.role ? (
+                <View className="rounded-full px-3 py-1" style={{ backgroundColor: 'rgba(255,255,255,0.12)' }}>
+                  <Text className="text-label font-semibold text-white">{user.role}</Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
         </View>
 
-        {/* Logout */}
+        <Group title="Mi progreso">
+          {loading ? (
+            <ActivityIndicator color={COLORS.navy} style={{ marginVertical: 18 }} />
+          ) : (
+            <>
+              <Row icon={<Clock color={COLORS.brand} size={20} />} label="Horas de servicio" value={hoursValue} onPress={() => router.push('/(tabs)/servicio')} />
+              <Row icon={<Compass color={COLORS.navy} size={20} />} label="Brújula de Vida" value={compassValue} onPress={() => router.push('/(tabs)/brujula')} last />
+            </>
+          )}
+        </Group>
+
+        <Group title="Cuenta">
+          <Row
+            icon={<KeyRound color={COLORS.navy} size={20} />}
+            label="Cambiar contraseña"
+            trailing={<ChevronRight color={COLORS.faint} size={18} />}
+            onPress={() => router.push('/cambiar-contrasena')}
+          />
+          <Row
+            icon={<Bell color={COLORS.navy} size={20} />}
+            label="Notificaciones"
+            trailing={
+              <View className="rounded-full bg-gray-100 px-2 py-0.5">
+                <Text className="text-overline font-semibold text-muted">Pronto</Text>
+              </View>
+            }
+            disabled
+            last
+          />
+        </Group>
+
+        <Group title="Soporte">
+          <Row
+            icon={<HelpCircle color={COLORS.navy} size={20} />}
+            label="Ayuda (portal SIGEF)"
+            trailing={<ExternalLink color={COLORS.faint} size={16} />}
+            onPress={() => WebBrowser.openBrowserAsync(`${SIGEF_BASE_URL}/portal`)}
+            last
+          />
+        </Group>
+
         <Pressable
-          className="flex-row items-center justify-center gap-3 bg-white border border-gray-200 rounded-2xl p-4 active:opacity-70"
-          onPress={logout}
+          className="h-14 flex-row items-center justify-center gap-2 rounded-2xl border border-red-200 bg-white active:opacity-70"
+          onPress={confirmLogout}
+          accessibilityRole="button"
         >
-          <LogOut color="#EF4444" size={20} />
-          <Text className="text-red-500 font-semibold">Cerrar Sesión</Text>
+          <LogOut color="#DC2626" size={20} />
+          <Text className="text-body font-semibold text-red-600">Cerrar sesión</Text>
         </Pressable>
+        <Text className="mt-4 text-center text-caption text-muted">Versión {Constants.expoConfig?.version ?? '1.0.0'}</Text>
       </ScrollView>
     </View>
   );

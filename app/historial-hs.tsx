@@ -1,189 +1,129 @@
-import { useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
-import { ChevronLeft, SlidersHorizontal, CircleCheck, Clock, XCircle, Plus } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
+import { Plus } from 'lucide-react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import FilterChips from '@/components/FilterChips';
+import HoursSummaryCard from '@/components/HoursSummaryCard';
+import ReportItem from '@/components/ReportItem';
+import ScreenHeader from '@/components/ui/ScreenHeader';
+import { COLORS } from '@/constants/theme';
+import { useCategories } from '@/hooks/useCategories';
 import { useReports } from '@/hooks/useReports';
-import SelectModal from '@/components/SelectModal';
-import { ReportResponse, ReportStatus } from '@/types/api';
+import { getApiErrorMessage } from '@/lib/apiError';
+import { REPORT_STATUS, REPORT_STATUS_META } from '@/lib/serviceReports';
+import { ServiceReportStatusId } from '@/types/api';
 
-const STATUS_OPTIONS: { value: ReportStatus | null; label: string }[] = [
-  { value: null, label: 'Todas' },
-  { value: 'PENDING', label: 'Pendiente' },
-  { value: 'APPROVED_FULL', label: 'Aprobada (total)' },
-  { value: 'APPROVED_PARTIAL', label: 'Aprobada (parcial)' },
-  { value: 'REJECTED', label: 'Rechazada' },
+/** Status filters, with the same labels as the SIGEF web portal. */
+const STATUS_FILTERS: { value: ServiceReportStatusId | null; label: string }[] = [
+  { value: null, label: 'Todos' },
+  { value: REPORT_STATUS.PENDING, label: 'Pendiente' },
+  { value: REPORT_STATUS.APPROVED_FULL, label: 'Aprobado (completo)' },
+  { value: REPORT_STATUS.APPROVED_PARTIAL, label: 'Aprobado (parcial)' },
+  { value: REPORT_STATUS.REJECTED, label: 'Rechazado' },
 ];
 
-function statusLabel(status: ReportStatus): string {
-  switch (status) {
-    case 'APPROVED_FULL':
-    case 'APPROVED_PARTIAL':
-      return 'APROBADA';
-    case 'PENDING':
-      return 'PENDIENTE';
-    case 'REJECTED':
-      return 'RECHAZADA';
-  }
-}
-
-function ActivityItem({ item }: { item: ReportResponse }) {
-  const isApproved = item.status === 'APPROVED_FULL' || item.status === 'APPROVED_PARTIAL';
-  const isPending = item.status === 'PENDING';
-  const isRejected = item.status === 'REJECTED';
-
-  const iconBg = isApproved ? 'bg-green-100' : isPending ? 'bg-yellow-100' : 'bg-red-100';
-  const badgeBg = isApproved ? 'bg-green-100' : isPending ? 'bg-yellow-100' : 'bg-red-100';
-  const badgeText = isApproved ? 'text-green-600' : isPending ? 'text-yellow-600' : 'text-red-600';
-  const hoursColor = isApproved ? 'text-green-500' : isPending ? 'text-yellow-500' : 'text-red-400';
-
-  const date = new Date(item.created_at).toLocaleDateString('es-ES', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-
-  const displayHours = item.approved_hours != null ? item.approved_hours : item.hours_spent;
-
-  return (
-    <View
-      className="bg-white rounded-2xl p-4 flex-row items-center gap-4"
-      style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}
-    >
-      <View className={`w-11 h-11 rounded-full items-center justify-center ${iconBg}`}>
-        {isApproved ? (
-          <CircleCheck color="#16A34A" size={22} />
-        ) : isPending ? (
-          <Clock color="#D97706" size={22} />
-        ) : (
-          <XCircle color="#DC2626" size={22} />
-        )}
-      </View>
-
-      <View className="flex-1">
-        <Text className="text-sm font-bold text-gray-800" numberOfLines={1}>
-          {item.category?.name ?? item.description.substring(0, 40)}
-        </Text>
-        <Text className="text-xs text-gray-400 mt-0.5">{date}</Text>
-      </View>
-
-      <View className="items-end gap-1">
-        <Text className={`text-sm font-bold ${hoursColor}`}>+{displayHours}h</Text>
-        <View className={`px-2 py-0.5 rounded-full ${badgeBg}`}>
-          <Text className={`text-xs font-semibold ${badgeText}`}>{statusLabel(item.status)}</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
+/** Full report history: hours summary, status filters and each report's actions. */
 export default function HistorialHS() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { data: reports, loading, loadingMore, error, status, loadMore, setStatusFilter } = useReports();
-  const [statusPickerOpen, setStatusPickerOpen] = useState(false);
+  const { data: reports, progress, loading, error, refetch, openEvidence } = useReports({ autoload: false });
+  const { data: categories } = useCategories();
+  const [status, setStatus] = useState<ServiceReportStatusId | null>(null);
+  const [openingId, setOpeningId] = useState<number | null>(null);
 
-  const totalHours = reports.reduce((sum, r) => sum + r.hours_spent, 0);
-  const approvedHours = reports
-    .filter((r) => r.status === 'APPROVED_FULL' || r.status === 'APPROVED_PARTIAL')
-    .reduce((sum, r) => sum + (r.approved_hours ?? r.hours_spent), 0);
-  const pendingHours = reports
-    .filter((r) => r.status === 'PENDING')
-    .reduce((sum, r) => sum + r.hours_spent, 0);
+  /** Reloads when coming back from the create/edit screen. */
+  useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
+
+  const filtered = useMemo(
+    () => (status == null ? reports : reports.filter((r) => r.status.id === status)),
+    [reports, status],
+  );
+
+  /** Total hours reported in a given status (the API only sums approved/rejected). */
+  const sumHours = (statusId: number) =>
+    reports.filter((r) => r.status.id === statusId).reduce((sum, r) => sum + r.hours_spent, 0);
+  const filterOptions = STATUS_FILTERS.map((f) => ({
+    ...f,
+    count: f.value == null ? reports.length : reports.filter((r) => r.status.id === f.value).length,
+    color: f.value == null ? undefined : REPORT_STATUS_META[f.value].color,
+  }));
+
+  /** Service category name for a report's category id. */
+  const categoryName = (id: number) => categories.find((c) => c.id === id)?.name;
+
+  /** Downloads a report's evidence PDF and opens it with the system viewer. */
+  const handleViewEvidence = async (id: number) => {
+    setOpeningId(id);
+    try {
+      await openEvidence(id);
+    } catch (e) {
+      Alert.alert('Error', getApiErrorMessage(e, 'No se pudo abrir la evidencia'));
+    } finally {
+      setOpeningId(null);
+    }
+  };
 
   return (
-    <View className="flex-1 bg-gray-50" style={{ paddingTop: insets.top }}>
-      {/* Header */}
-      <View className="flex-row items-center px-4 py-4 bg-white border-b border-gray-100">
-        <Pressable
-          className="w-9 h-9 items-center justify-center rounded-full active:bg-gray-100"
-          onPress={() => router.back()}
-        >
-          <ChevronLeft color="#002d4e" size={24} />
-        </Pressable>
-        <Text className="flex-1 text-center text-lg font-bold text-gray-900">Historial de Horas</Text>
-        <Pressable
-          className="w-9 h-9 items-center justify-center rounded-full active:bg-gray-100"
-          onPress={() => setStatusPickerOpen(true)}
-        >
-          <SlidersHorizontal color="#374151" size={20} />
-        </Pressable>
-      </View>
+    <View className="flex-1 bg-paper">
+      <ScreenHeader title="Historial de horas" />
 
-      <SelectModal
-        visible={statusPickerOpen}
-        title="Filtrar por estado"
-        options={STATUS_OPTIONS}
-        selectedValue={status}
-        onSelect={setStatusFilter}
-        onClose={() => setStatusPickerOpen(false)}
-      />
-
-      {loading ? (
+      {loading && reports.length === 0 ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#002d4e" />
+          <ActivityIndicator size="large" color={COLORS.navy} />
         </View>
-      ) : error ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <Text className="text-red-500 text-center">{error}</Text>
+      ) : error && reports.length === 0 ? (
+        <View className="flex-1 items-center justify-center gap-4 px-8">
+          <Text className="text-center text-body text-red-600">{error}</Text>
+          <Pressable className="rounded-xl bg-navy px-5 py-3 active:opacity-80" onPress={refetch}>
+            <Text className="text-body font-semibold text-white">Reintentar</Text>
+          </Pressable>
         </View>
       ) : (
         <FlatList
-          data={reports}
+          data={filtered}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 100 }}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={refetch} />}
           ListHeaderComponent={
             <>
-              {/* Summary card */}
-              <View className="rounded-3xl p-6 mb-6" style={{ backgroundColor: '#002d4e' }}>
-                <Text className="text-blue-200 text-xs font-semibold uppercase tracking-widest mb-1">
-                  Total Acumulado
-                </Text>
-                <View className="flex-row items-baseline gap-1 mb-4">
-                  <Text className="text-white text-5xl font-bold">{totalHours}</Text>
-                  <Text className="text-blue-300 text-xl">horas</Text>
-                </View>
-                <View className="flex-row gap-3 flex-wrap">
-                  <View className="flex-row items-center gap-2 bg-white/10 rounded-full px-3 py-1.5">
-                    <View className="w-2.5 h-2.5 rounded-full bg-green-400" />
-                    <Text className="text-white text-xs font-medium">{approvedHours} Aprobadas</Text>
-                  </View>
-                  <View className="flex-row items-center gap-2 bg-white/10 rounded-full px-3 py-1.5">
-                    <View className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
-                    <Text className="text-white text-xs font-medium">{pendingHours} Pendientes</Text>
-                  </View>
-                </View>
-              </View>
-
-              <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-xs text-gray-400 uppercase tracking-widest font-semibold">
-                  Actividad Reciente
-                </Text>
-                <Pressable className="active:opacity-70">
-                  <Text className="text-blue-500 text-sm font-medium">Ver todo</Text>
-                </Pressable>
+              <HoursSummaryCard
+                progress={progress}
+                pendingHours={sumHours(REPORT_STATUS.PENDING)}
+                rejectedHours={sumHours(REPORT_STATUS.REJECTED)}
+              />
+              <View className="mb-4">
+                <FilterChips options={filterOptions} selected={status} onSelect={setStatus} />
               </View>
             </>
           }
           ListEmptyComponent={
-            <Text className="text-center text-gray-400 mt-8">No tienes reportes aún.</Text>
+            <Text className="mt-8 text-center text-label text-muted">
+              {status == null ? 'Todavía no has enviado ningún reporte.' : 'No hay reportes con este estado.'}
+            </Text>
           }
           ItemSeparatorComponent={() => <View className="h-3" />}
-          renderItem={({ item }) => <ActivityItem item={item} />}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.4}
-          ListFooterComponent={loadingMore ? <ActivityIndicator className="my-4" color="#002d4e" /> : null}
+          renderItem={({ item }) => (
+            <ReportItem
+              report={item}
+              categoryName={categoryName(item.category_id)}
+              openingEvidence={openingId === item.id}
+              onViewEvidence={item.has_evidence === false ? undefined : () => handleViewEvidence(item.id)}
+              onEdit={() => router.push(`/reportar-hs?id=${item.id}`)}
+            />
+          )}
         />
       )}
 
-      {/* FAB */}
       <Pressable
-        className="absolute bottom-8 right-6 w-14 h-14 rounded-full bg-blue-500 items-center justify-center active:opacity-80"
-        style={{ shadowColor: '#3B82F6', shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 }}
+        className="absolute right-6 h-14 w-14 items-center justify-center rounded-full bg-brand active:opacity-80"
+        style={{ bottom: insets.bottom + 24, shadowColor: COLORS.brand, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 }}
         onPress={() => router.push('/reportar-hs')}
+        accessibilityRole="button"
+        accessibilityLabel="Reportar horas"
       >
-        <Plus color="#fff" size={28} />
+        <Plus color={COLORS.white} size={28} />
       </Pressable>
     </View>
   );
